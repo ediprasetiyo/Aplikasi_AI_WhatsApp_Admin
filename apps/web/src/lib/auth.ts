@@ -3,6 +3,26 @@ import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { organization } from 'better-auth/plugins';
 import { prisma } from '@wa-admin/db';
 
+// Origins yang diizinkan untuk akses auth API (CSRF protection).
+// Otomatis menerima: localhost dev, URL utama, URL Vercel preview/branch, dan custom domain di env.
+function buildTrustedOrigins(): string[] {
+  const list = new Set<string>(['http://localhost:3000']);
+  if (process.env.BETTER_AUTH_URL) list.add(process.env.BETTER_AUTH_URL);
+  if (process.env.NEXT_PUBLIC_APP_URL) list.add(process.env.NEXT_PUBLIC_APP_URL);
+  if (process.env.VERCEL_URL) list.add(`https://${process.env.VERCEL_URL}`);
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    list.add(`https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`);
+  }
+  // tambahan domain manual (comma-separated)
+  if (process.env.AUTH_TRUSTED_ORIGINS) {
+    for (const o of process.env.AUTH_TRUSTED_ORIGINS.split(',')) {
+      const t = o.trim();
+      if (t) list.add(t);
+    }
+  }
+  return Array.from(list);
+}
+
 export const auth = betterAuth({
   database: prismaAdapter(prisma, { provider: 'postgresql' }),
   emailAndPassword: {
@@ -23,6 +43,7 @@ export const auth = betterAuth({
     updateAge: 60 * 60 * 24, // refresh once/day
   },
   baseURL: process.env.BETTER_AUTH_URL ?? 'http://localhost:3000',
+  trustedOrigins: buildTrustedOrigins(),
   secret: process.env.BETTER_AUTH_SECRET!,
 });
 

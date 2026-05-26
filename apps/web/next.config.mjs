@@ -16,6 +16,18 @@ if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
 const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ['@wa-admin/db'],
+  // Pastikan Prisma engine ikut ter-bundle ke serverless function di Vercel.
+  // Tanpa ini, pnpm hoisting bikin Next.js tidak nemu libquery_engine-*.so.node.
+  outputFileTracingIncludes: {
+    '/**/*': [
+      './node_modules/.pnpm/@prisma+client*/node_modules/.prisma/**/*',
+      './node_modules/.pnpm/prisma*/node_modules/@prisma/engines/**/*',
+      '../../node_modules/.pnpm/@prisma+client*/node_modules/.prisma/**/*',
+      '../../node_modules/.pnpm/prisma*/node_modules/@prisma/engines/**/*',
+    ],
+  },
+  // Prisma harus dijalankan di Node runtime, bukan diserializasi oleh bundler
+  serverExternalPackages: ['@prisma/client', 'prisma'],
 };
 
 export default nextConfig;
