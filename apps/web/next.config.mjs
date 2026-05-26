@@ -16,9 +16,18 @@ if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
 const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ['@wa-admin/db'],
-  // Prisma client harus jadi external di server bundle — webpack tidak bisa
-  // bundle native binding (.so.node) dengan benar. Next.js akan resolve runtime.
+  // Prisma client jadi external di server bundle — Next.js resolve runtime.
   serverExternalPackages: ['@prisma/client', '.prisma/client'],
+  // Force Vercel ikut copy generated Prisma client + engine binary.
+  // Pattern ini bisa bikin Windows EPERM saat local build, tapi aman di Linux/Vercel.
+  outputFileTracingIncludes: {
+    '/**/*': [
+      '../../packages/db/src/generated/client/**/*.node',
+      '../../packages/db/src/generated/client/**/*.js',
+      '../../packages/db/src/generated/client/**/*.d.ts',
+      '../../packages/db/src/generated/client/schema.prisma',
+    ],
+  },
 };
 
 export default nextConfig;
