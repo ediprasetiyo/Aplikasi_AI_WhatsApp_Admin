@@ -1,4 +1,4 @@
-export const metadata = { title: 'Kebijakan Privasi · WA Admin AI' };
+export const metadata = { title: 'Kebijakan Privasi · Auto Balas' };
 
 export default function PrivacyPage() {
   return (

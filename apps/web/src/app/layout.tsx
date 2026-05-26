@@ -3,7 +3,7 @@ import { Toaster } from 'sonner';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'WA Admin AI — Auto-reply WhatsApp untuk UMKM',
+  title: 'Auto Balas — Auto-reply WhatsApp untuk UMKM',
   description: 'Bantu owner UMKM kurangi beban admin dan jangan sampai customer hilang.',
 };
 

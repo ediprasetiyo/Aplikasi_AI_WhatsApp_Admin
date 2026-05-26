@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { MessageCircle, ArrowLeft } from 'lucide-react';
+import { MessageCircleReply, ArrowLeft } from 'lucide-react';
 import { DemoChat } from './demo-chat';
 
 const PRESETS = [
@@ -70,8 +70,8 @@ export default function DemoPage() {
         <div className="container flex h-16 items-center justify-between">
           <Link href="/" className="flex items-center gap-2 font-bold text-lg">
             <ArrowLeft className="h-5 w-5" />
-            <MessageCircle className="h-6 w-6 text-brand" />
-            WA Admin AI
+            <MessageCircleReply className="h-6 w-6 text-brand" />
+            Auto Balas
           </Link>
           <Link
             href="/register"

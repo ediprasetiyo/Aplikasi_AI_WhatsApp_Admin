@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowLeft, MessageCircle } from 'lucide-react';
+import { ArrowLeft, MessageCircleReply } from 'lucide-react';
 
 export default function LegalLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -8,8 +8,8 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
         <div className="container flex h-16 items-center justify-between">
           <Link href="/" className="flex items-center gap-2 font-bold">
             <ArrowLeft className="h-5 w-5" />
-            <MessageCircle className="h-6 w-6 text-brand" />
-            WA Admin AI
+            <MessageCircleReply className="h-6 w-6 text-brand" />
+            Auto Balas
           </Link>
         </div>
       </header>

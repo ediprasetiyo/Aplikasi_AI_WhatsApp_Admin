@@ -1,4 +1,4 @@
-export const metadata = { title: 'Syarat & Ketentuan · WA Admin AI' };
+export const metadata = { title: 'Syarat & Ketentuan · Auto Balas' };
 
 export default function TermsPage() {
   return (
@@ -8,7 +8,7 @@ export default function TermsPage() {
 
       <h2 className="mt-8 text-2xl font-bold">1. Penerimaan Syarat</h2>
       <p>
-        Dengan mendaftar dan menggunakan WA Admin AI ("Layanan"), Anda setuju terikat oleh syarat &
+        Dengan mendaftar dan menggunakan Auto Balas ("Layanan"), Anda setuju terikat oleh syarat &
         ketentuan ini, termasuk Kebijakan Privasi dan Lisensi yang menjadi satu kesatuan.
       </p>
 

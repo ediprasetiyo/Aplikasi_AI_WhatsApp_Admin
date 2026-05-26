@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import {
   MessageCircle,
+  MessageCircleReply,
   Bot,
   Users,
   Zap,
@@ -24,8 +25,8 @@ export default function LandingPage() {
       <header className="border-b">
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-2 font-bold text-lg">
-            <MessageCircle className="h-6 w-6 text-brand" />
-            WA Admin AI
+            <MessageCircleReply className="h-6 w-6 text-brand" />
+            Auto Balas
           </div>
           <nav className="flex items-center gap-2 md:gap-4">
             <Link href="/demo" className="hidden md:inline text-sm text-gray-600 hover:text-gray-900">
@@ -302,8 +303,8 @@ export default function LandingPage() {
           <div className="grid gap-8 md:grid-cols-4">
             <div className="md:col-span-2">
               <div className="flex items-center gap-2 font-bold">
-                <MessageCircle className="h-5 w-5 text-brand" />
-                WA Admin AI
+                <MessageCircleReply className="h-5 w-5 text-brand" />
+                Auto Balas
               </div>
               <p className="mt-3 text-sm text-gray-600 max-w-sm">
                 AI auto-reply WhatsApp untuk UMKM Indonesia. Bantu owner kurangi beban admin
@@ -337,7 +338,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="mt-10 border-t pt-6 flex flex-col sm:flex-row justify-between gap-2 text-xs text-gray-500">
-            <div>© {new Date().getFullYear()} WA Admin AI · Made in Indonesia 🇮🇩</div>
+            <div>© {new Date().getFullYear()} Auto Balas · Made in Indonesia 🇮🇩</div>
             <div>Created with ❤️ by <span className="font-medium text-gray-700">Edi Prasetiyo</span></div>
           </div>
         </div>

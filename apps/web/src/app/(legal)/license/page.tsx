@@ -1,4 +1,4 @@
-export const metadata = { title: 'Lisensi · WA Admin AI' };
+export const metadata = { title: 'Lisensi · Auto Balas' };
 
 export default function LicensePage() {
   return (
@@ -21,7 +21,7 @@ export default function LicensePage() {
       <p>
         Dengan berlangganan paket berbayar (Starter, Pro, atau Business), Anda mendapatkan
         lisensi <strong>non-eksklusif, non-transferable</strong>, dan dapat dicabut, untuk
-        mengakses dan menggunakan Layanan WA Admin AI sesuai paket yang dipilih.
+        mengakses dan menggunakan Layanan Auto Balas sesuai paket yang dipilih.
       </p>
 
       <h2 className="mt-8 text-2xl font-bold">2. Yang Boleh Anda Lakukan</h2>
@@ -59,13 +59,13 @@ export default function LicensePage() {
       <h2 className="mt-8 text-2xl font-bold">6. Tanggung Jawab</h2>
       <p>
         Anda bertanggung jawab atas konten knowledge base & pesan yang dikirim atas nama bisnis Anda.
-        WA Admin AI sebagai platform tidak bertanggung jawab atas isi pesan yang dihasilkan AI
+        Auto Balas sebagai platform tidak bertanggung jawab atas isi pesan yang dihasilkan AI
         berdasarkan knowledge base yang Anda input.
       </p>
 
       <h2 className="mt-8 text-2xl font-bold">7. Pemilik Lisensi</h2>
       <p>
-        Layanan WA Admin AI dioperasikan oleh <strong>Edi Prasetiyo</strong>, berbasis di
+        Layanan Auto Balas dioperasikan oleh <strong>Edi Prasetiyo</strong>, berbasis di
         Indonesia. Untuk pertanyaan terkait lisensi atau perjanjian khusus (enterprise, reseller),
         hubungi WhatsApp <strong>+62 821-1552-5327</strong>.
       </p>

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { MessageCircle, LayoutDashboard, Users, Settings, LogOut, Phone, Inbox, Sparkles } from 'lucide-react';
+import { MessageCircleReply, LayoutDashboard, Users, Settings, LogOut, Phone, Inbox, Sparkles } from 'lucide-react';
 import { requireSession } from '@/lib/session';
 import { prisma } from '@wa-admin/db';
 import { SignOutButton } from './_components/sign-out-button';
@@ -25,8 +25,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
     <div className="flex min-h-screen">
       <aside className="w-64 border-r bg-white px-4 py-6">
         <Link href="/dashboard" className="flex items-center gap-2 font-bold text-lg">
-          <MessageCircle className="h-6 w-6 text-brand" />
-          WA Admin AI
+          <MessageCircleReply className="h-6 w-6 text-brand" />
+          Auto Balas
         </Link>
 
         <div className="mt-6">
