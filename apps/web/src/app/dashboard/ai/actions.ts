@@ -1,0 +1,86 @@
+'use server';
+
+import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
+import { prisma } from '@wa-admin/db';
+import { requireSession } from '@/lib/session';
+
+export type ActionResult = { ok: true } | { ok: false; error: string };
+
+async function getActiveOrg() {
+  const session = await requireSession();
+  const orgId = session.session.activeOrganizationId;
+  if (!orgId) throw new Error('Pilih workspace dulu');
+  return { session, orgId };
+}
+
+const settingSchema = z.object({
+  enabled: z.boolean(),
+  systemPrompt: z.string().trim().min(10, 'System prompt terlalu pendek'),
+  model: z.string().trim().min(3),
+  replyDelayMs: z.coerce.number().int().min(0).max(60000),
+});
+
+export async function saveAiSetting(input: {
+  enabled: boolean;
+  systemPrompt: string;
+  model: string;
+  replyDelayMs: number;
+}): Promise<ActionResult> {
+  try {
+    const { orgId } = await getActiveOrg();
+    const parsed = settingSchema.safeParse(input);
+    if (!parsed.success) {
+      return { ok: false, error: parsed.error.issues[0]?.message ?? 'Input tidak valid' };
+    }
+    await prisma.aiSetting.upsert({
+      where: { organizationId: orgId },
+      create: { organizationId: orgId, ...parsed.data },
+      update: parsed.data,
+    });
+    revalidatePath('/dashboard/ai');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
+const kbSchema = z.object({
+  title: z.string().trim().min(2, 'Judul minimal 2 karakter'),
+  content: z.string().trim().min(5, 'Isi terlalu pendek'),
+});
+
+export async function createKnowledgeEntry(formData: FormData): Promise<ActionResult> {
+  try {
+    const { orgId } = await getActiveOrg();
+    const parsed = kbSchema.safeParse({
+      title: formData.get('title'),
+      content: formData.get('content'),
+    });
+    if (!parsed.success) {
+      return { ok: false, error: parsed.error.issues[0]?.message ?? 'Input tidak valid' };
+    }
+    await prisma.knowledgeEntry.create({
+      data: { organizationId: orgId, ...parsed.data },
+    });
+    revalidatePath('/dashboard/ai');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
+export async function deleteKnowledgeEntry(id: string): Promise<ActionResult> {
+  try {
+    const { orgId } = await getActiveOrg();
+    const entry = await prisma.knowledgeEntry.findFirst({
+      where: { id, organizationId: orgId },
+    });
+    if (!entry) return { ok: false, error: 'Entry tidak ditemukan' };
+    await prisma.knowledgeEntry.delete({ where: { id } });
+    revalidatePath('/dashboard/ai');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}

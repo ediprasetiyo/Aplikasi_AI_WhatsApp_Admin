@@ -1,0 +1,244 @@
+// AI WhatsApp Admin — multi-tenant schema
+// Table & field names follow Better-Auth conventions (lowercase, singular)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===== Auth (Better-Auth core) =====
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  name          String
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts        Account[]
+  sessions        Session[]
+  members         Member[]
+  invitationsSent Invitation[] @relation("InviterRel")
+
+  @@map("user")
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  userId                String
+  accountId             String
+  providerId            String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, accountId])
+  @@map("account")
+}
+
+model Session {
+  id                   String   @id @default(cuid())
+  userId               String
+  token                String   @unique
+  expiresAt            DateTime
+  ipAddress            String?
+  userAgent            String?
+  activeOrganizationId String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("session")
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("verification")
+}
+
+// ===== Tenancy (Better-Auth organization plugin) =====
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  logo      String?
+  // JSON string — Better-Auth stores plugin metadata here (incl. our `industry`)
+  metadata  String?
+  createdAt DateTime @default(now())
+
+  members           Member[]
+  invitations       Invitation[]
+  whatsappAccounts  WhatsappAccount[]
+  conversations     Conversation[]
+  knowledgeEntries  KnowledgeEntry[]
+  aiSetting         AiSetting?
+
+  @@map("organization")
+}
+
+model Member {
+  id             String       @id @default(cuid())
+  organizationId String
+  userId         String
+  // Roles: "owner" | "admin" | "member" (string for Better-Auth compatibility)
+  role           String       @default("member")
+  createdAt      DateTime     @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+  @@map("member")
+}
+
+model Invitation {
+  id             String       @id @default(cuid())
+  organizationId String
+  email          String
+  role           String       @default("member")
+  status         String       @default("pending") // pending | accepted | revoked | expired
+  expiresAt      DateTime
+  inviterId      String
+  createdAt      DateTime     @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  inviter      User         @relation("InviterRel", fields: [inviterId], references: [id], onDelete: Cascade)
+
+  @@index([email])
+  @@index([organizationId])
+  @@map("invitation")
+}
+
+// ===== WhatsApp Cloud API =====
+
+model WhatsappAccount {
+  id                  String   @id @default(cuid())
+  organizationId      String
+  // dari Meta — unique per nomor terhubung
+  phoneNumberId       String   @unique
+  // nomor yang ditampilkan ke user (e.g. "+628123456789")
+  displayPhoneNumber  String
+  // verified business name dari Meta
+  verifiedName        String?
+  // WABA (WhatsApp Business Account) id
+  businessAccountId   String?
+  // access token (TODO: encrypt di production)
+  accessToken         String
+  // status: active | disconnected | error
+  status              String   @default("active")
+  // pesan error terakhir kalau ada
+  lastError           String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  conversations Conversation[]
+
+  @@index([organizationId])
+  @@map("whatsapp_account")
+}
+
+model Conversation {
+  id                String   @id @default(cuid())
+  organizationId    String
+  whatsappAccountId String
+  // nomor customer (e.g. "628987654321" tanpa +)
+  customerPhone     String
+  // nama dari WA profile, opsional
+  customerName      String?
+  // last activity untuk sorting inbox
+  lastMessageAt     DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  organization    Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  whatsappAccount WhatsappAccount @relation(fields: [whatsappAccountId], references: [id], onDelete: Cascade)
+  messages        Message[]
+
+  @@unique([whatsappAccountId, customerPhone])
+  @@index([organizationId, lastMessageAt])
+  @@map("conversation")
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  // wamid dari Meta untuk dedupe
+  waMessageId    String?  @unique
+  // direction: inbound (dari customer) | outbound (dari kita)
+  direction      String
+  // type: text | image | audio | video | document | location | template | other
+  type           String   @default("text")
+  // konten utama (text body, atau caption untuk media)
+  body           String?
+  // URL media kalau ada
+  mediaUrl       String?
+  // raw payload dari Meta untuk debug
+  raw            Json?
+  // status outbound: sent | delivered | read | failed
+  status         String?
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@map("message")
+}
+
+// ===== AI Knowledge Base & Settings =====
+
+model KnowledgeEntry {
+  id             String   @id @default(cuid())
+  organizationId String
+  title          String
+  content        String   // text panjang, FAQ atau info bisnis
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("knowledge_entry")
+}
+
+model AiSetting {
+  id             String   @id @default(cuid())
+  organizationId String   @unique
+  // toggle auto-reply on/off
+  enabled        Boolean  @default(false)
+  // persona / instructions ke AI
+  systemPrompt   String   @default("Anda adalah admin customer service yang ramah dan informatif. Jawab pertanyaan customer dengan singkat, sopan, dan akurat berdasarkan informasi yang tersedia. Kalau tidak tahu jawaban, bilang akan dihubungkan ke admin manusia.")
+  // Groq model
+  model          String   @default("llama-3.3-70b-versatile")
+  // delay sebelum reply (detik) — biar tidak terlihat robotik
+  replyDelayMs   Int      @default(1500)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("ai_setting")
+}

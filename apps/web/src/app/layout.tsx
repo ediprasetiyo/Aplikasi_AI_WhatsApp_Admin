@@ -1,0 +1,19 @@
+import type { Metadata } from 'next';
+import { Toaster } from 'sonner';
+import './globals.css';
+
+export const metadata: Metadata = {
+  title: 'WA Admin AI — Auto-reply WhatsApp untuk UMKM',
+  description: 'Bantu owner UMKM kurangi beban admin dan jangan sampai customer hilang.',
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="id">
+      <body className="min-h-screen bg-white text-gray-900 antialiased">
+        {children}
+        <Toaster richColors position="top-right" />
+      </body>
+    </html>
+  );
+}
