@@ -3,8 +3,9 @@
 
 generator client {
   provider      = "prisma-client-js"
-  // native = OS local dev (Windows/Mac/Linux)
-  // rhel-openssl-3.0.x = Vercel/AWS Lambda Linux runtime
+  // Output ke folder dalam package biar Next.js tracing bisa nemu engine binary.
+  output        = "../src/generated/client"
+  // native = OS dev lokal · rhel-openssl-3.0.x = Vercel/AWS Lambda Linux runtime
   binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
