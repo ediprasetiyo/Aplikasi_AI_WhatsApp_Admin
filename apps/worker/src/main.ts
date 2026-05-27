@@ -5,6 +5,9 @@ import pino from 'pino';
 import { sessions } from './sessions.js';
 import { authMiddleware } from './auth.js';
 
+// Suppress deprecation warning untuk url.parse() di dependency lama
+process.removeAllListeners('warning');
+
 const log = pino({
   level: process.env.LOG_LEVEL ?? 'info',
   transport: process.env.NODE_ENV === 'production' ? undefined : { target: 'pino-pretty' },
