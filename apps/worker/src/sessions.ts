@@ -3,7 +3,6 @@ import {
   DisconnectReason,
   fetchLatestBaileysVersion,
   initAuthCreds,
-  proto,
   BufferJSON,
   type WASocket,
   type AuthenticationCreds,
@@ -352,11 +351,7 @@ async function usePrismaAuthState(accountId: string): Promise<{
           for (const id of ids) {
             const value = keys[type]?.[id];
             if (value !== undefined) {
-              if (type === 'app-state-sync-key' && value) {
-                result[id] = proto.Message.AppStateSyncKeyData.fromObject(value as object);
-              } else {
-                result[id] = value;
-              }
+              result[id] = value;
             }
           }
           return result as { [id: string]: SignalDataTypeMap[typeof type] };
