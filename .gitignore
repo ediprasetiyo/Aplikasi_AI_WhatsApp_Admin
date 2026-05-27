@@ -3,10 +3,11 @@ node_modules/
 .pnpm-store/
 
 # build outputs
-dist/
 .next/
 out/
 build/
+apps/worker/dist/
+apps/api/dist/
 
 # turbo
 .turbo/
