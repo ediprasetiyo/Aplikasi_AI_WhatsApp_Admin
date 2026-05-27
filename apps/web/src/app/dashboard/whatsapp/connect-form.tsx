@@ -26,13 +26,19 @@ export function ConnectForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
+    <form onSubmit={onSubmit} className="space-y-4" autoComplete="off">
+      {/* Trick untuk disable Chrome autofill — input hidden palsu */}
+      <input type="text" name="fakeusernameremembered" className="hidden" autoComplete="off" />
+      <input type="password" name="fakepasswordremembered" className="hidden" autoComplete="new-password" />
+
       <Field
         label="Phone Number ID"
         name="phoneNumberId"
         placeholder="123456789012345"
         hint="Dari Meta → WhatsApp → API Setup → 'Phone number ID'"
         required
+        autoComplete="off"
+        inputMode="numeric"
       />
       <Field
         label="Access Token"
@@ -41,6 +47,7 @@ export function ConnectForm() {
         placeholder="EAAxxxx..."
         hint="Gunakan permanent token (System User), bukan temporary 24-jam"
         required
+        autoComplete="new-password"
         right={
           <button
             type="button"
@@ -56,6 +63,8 @@ export function ConnectForm() {
         name="businessAccountId"
         placeholder="123456789012345"
         hint="WABA ID — boleh kosong"
+        autoComplete="off"
+        inputMode="numeric"
       />
       <button
         disabled={pending}
