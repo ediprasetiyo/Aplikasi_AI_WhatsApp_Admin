@@ -15,20 +15,10 @@
     "seed": "dotenv -e ../../.env -- tsx prisma/seed.ts"
   },
   "dependencies": {
-    "@neondatabase/serverless": "^0.10.4",
-    "@prisma/adapter-neon": "^6.1.0",
     "@prisma/client": "^6.1.0",
-    "prisma": "^6.1.0",
-    "ws": "^8.18.0"
-  },
-  "peerDependencies": {
-    "bufferutil": "*"
-  },
-  "peerDependenciesMeta": {
-    "bufferutil": { "optional": true }
+    "prisma": "^6.1.0"
   },
   "devDependencies": {
-    "@types/ws": "^8.5.13",
     "dotenv-cli": "^7.4.4",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"

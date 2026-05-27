@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "cd ../.. && pnpm --filter @wa-admin/web build",
-  "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
+  "buildCommand": "cd ../.. && npm run build -w @wa-admin/web",
+  "installCommand": "cd ../.. && npm install --legacy-peer-deps",
   "framework": "nextjs",
   "regions": ["sin1"]
 }

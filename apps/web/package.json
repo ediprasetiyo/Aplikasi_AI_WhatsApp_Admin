@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@wa-admin/db": "workspace:*",
+    "@wa-admin/db": "*",
     "better-auth": "^1.1.10",
     "next": "^15.1.3",
     "react": "^19.0.0",
