@@ -1,6 +1,7 @@
 import { prisma } from '@wa-admin/db';
 import { chat, type ChatMessage } from './groq';
 import { sendTextMessage } from './whatsapp';
+import { worker } from './worker-client';
 
 const MAX_HISTORY = 10; // ambil 10 pesan terakhir untuk context
 
@@ -96,16 +97,24 @@ export async function generateAndSendReply(conversationId: string): Promise<{
   }
 
   try {
-    const result = await sendTextMessage({
-      phoneNumberId: acc.phoneNumberId,
-      accessToken: acc.accessToken,
-      to: convo.customerPhone,
-      text: replyText,
-    });
-    const wamid = result.messages[0]?.id;
+    let wamid: string | null = null;
+    if (acc.provider === 'baileys') {
+      // Lewat worker
+      const res = await worker.send(acc.id, convo.customerPhone, replyText);
+      wamid = res.messageId;
+    } else {
+      // Cloud API langsung ke Meta
+      const result = await sendTextMessage({
+        phoneNumberId: acc.phoneNumberId,
+        accessToken: acc.accessToken,
+        to: convo.customerPhone,
+        text: replyText,
+      });
+      wamid = result.messages[0]?.id ?? null;
+    }
     await prisma.message.update({
       where: { id: saved.id },
-      data: { status: 'sent', waMessageId: wamid },
+      data: { status: 'sent', waMessageId: wamid ?? undefined },
     });
     return { replyText, sent: true };
   } catch (e) {

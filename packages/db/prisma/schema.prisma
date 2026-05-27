@@ -138,28 +138,50 @@ model Invitation {
 model WhatsappAccount {
   id                  String   @id @default(cuid())
   organizationId      String
-  // dari Meta — unique per nomor terhubung
+  // "baileys" (QR scan) | "cloud_api" (Meta resmi)
+  provider            String   @default("cloud_api")
+  // ID unik: untuk cloud_api = phone_number_id Meta · untuk baileys = sessionId
   phoneNumberId       String   @unique
   // nomor yang ditampilkan ke user (e.g. "+628123456789")
   displayPhoneNumber  String
-  // verified business name dari Meta
+  // verified business name dari Meta (cloud_api only)
   verifiedName        String?
-  // WABA (WhatsApp Business Account) id
+  // WABA (WhatsApp Business Account) id (cloud_api only)
   businessAccountId   String?
-  // access token (TODO: encrypt di production)
-  accessToken         String
-  // status: active | disconnected | error
+  // access token (cloud_api). Untuk baileys: kosong, creds disimpan di BaileysSession
+  accessToken         String   @default("")
+  // status: active | disconnected | error | pending_qr | connecting
   status              String   @default("active")
   // pesan error terakhir kalau ada
   lastError           String?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
-  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  conversations Conversation[]
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  conversations  Conversation[]
+  baileysSession BaileysSession?
 
   @@index([organizationId])
   @@map("whatsapp_account")
+}
+
+model BaileysSession {
+  id                String   @id @default(cuid())
+  whatsappAccountId String   @unique
+  // base64 PNG dari QR terakhir, null setelah connected
+  qrCode            String?
+  // JSON terenkripsi creds Baileys (TODO: encrypt at-rest)
+  credsJson         String?  @db.Text
+  // ID instance worker yang handle session ini (untuk scaling nanti)
+  workerId          String?
+  // last heartbeat dari worker
+  lastSeenAt        DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  whatsappAccount WhatsappAccount @relation(fields: [whatsappAccountId], references: [id], onDelete: Cascade)
+
+  @@map("baileys_session")
 }
 
 model Conversation {
