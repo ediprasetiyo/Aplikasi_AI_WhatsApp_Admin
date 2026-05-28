@@ -25,6 +25,9 @@ type SessionState = {
   qrDataUrl: string | null;
   status: 'pending_qr' | 'connecting' | 'connected' | 'disconnected' | 'error';
   lastError: string | null;
+  // Guard against race conditions saat multi-reconnect
+  connecting: boolean;
+  reconnectTimer: NodeJS.Timeout | null;
 };
 
 class SessionManager {
@@ -40,13 +43,22 @@ class SessionManager {
       log.info({ accountId }, 'session already connected, skip');
       return;
     }
-    // tutup koneksi lama kalau ada
-    if (existing?.sock) {
-      try {
-        existing.sock.end(undefined);
-      } catch {
-        /* ignore */
+    // bersih total session lama: cancel timer + end sock + hapus dari map
+    if (existing) {
+      if (existing.reconnectTimer) {
+        clearTimeout(existing.reconnectTimer);
+        existing.reconnectTimer = null;
       }
+      if (existing.sock) {
+        try {
+          existing.sock.end(undefined);
+        } catch {
+          /* ignore */
+        }
+      }
+      this.map.delete(accountId);
+      // Jeda biar WhatsApp server sempat tutup session lama
+      await new Promise((r) => setTimeout(r, 1000));
     }
 
     const state: SessionState = {
@@ -56,6 +68,8 @@ class SessionManager {
       qrDataUrl: null,
       status: 'connecting',
       lastError: null,
+      connecting: false,
+      reconnectTimer: null,
     };
     this.map.set(accountId, state);
 
@@ -64,6 +78,22 @@ class SessionManager {
 
   private async connect(state: SessionState) {
     const { accountId } = state;
+    if (state.connecting) {
+      log.warn({ accountId }, 'connect() dipanggil saat sudah connecting, skip');
+      return;
+    }
+    state.connecting = true;
+
+    // Pastikan socket lama benar-benar tutup sebelum buat baru
+    if (state.sock) {
+      try {
+        state.sock.end(undefined);
+      } catch {
+        /* ignore */
+      }
+      state.sock = null;
+    }
+
     log.info({ accountId }, 'starting baileys connect');
 
     const { state: authState, saveCreds } = await usePrismaAuthState(accountId);
@@ -75,13 +105,20 @@ class SessionManager {
       printQRInTerminal: false,
       browser: ['Auto Balas', 'Chrome', '120.0.0'],
       syncFullHistory: false,
+      markOnlineOnConnect: false,
       logger: pino({ level: 'warn' }) as never,
     });
     state.sock = sock;
+    // Reference ke socket "current" — event dari socket lama akan diabaikan
+    const mySock = sock;
 
     sock.ev.on('creds.update', saveCreds);
 
     sock.ev.on('connection.update', async (update) => {
+      // Abaikan event dari socket yang sudah bukan socket aktif (stale)
+      if (state.sock !== mySock) {
+        return;
+      }
       const { connection, lastDisconnect, qr } = update;
 
       if (qr) {
@@ -115,6 +152,12 @@ class SessionManager {
         state.qrDataUrl = null;
         state.status = 'connected';
         state.lastError = null;
+        state.connecting = false;
+        // Cancel pending reconnect kalau ada
+        if (state.reconnectTimer) {
+          clearTimeout(state.reconnectTimer);
+          state.reconnectTimer = null;
+        }
         await prisma.whatsappAccount.update({
           where: { id: accountId },
           data: {
@@ -152,6 +195,7 @@ class SessionManager {
             lastError: state.lastError,
           },
         });
+        state.connecting = false;
         if (loggedOut || replaced) {
           // user logout/replace dari HP — hapus creds biar bisa scan QR ulang fresh
           await prisma.baileysSession
@@ -160,13 +204,21 @@ class SessionManager {
               data: { credsJson: null, qrCode: null },
             })
             .catch(() => null);
+          if (state.reconnectTimer) {
+            clearTimeout(state.reconnectTimer);
+            state.reconnectTimer = null;
+          }
           this.map.delete(accountId);
-        } else if (shouldReconnect) {
+        } else if (shouldReconnect && !state.reconnectTimer) {
           // reconnect setelah jeda untuk error transient (network blip, dst.)
-          setTimeout(() => {
+          // Guard !state.reconnectTimer biar tidak schedule multiple reconnect bersamaan.
+          // Code 515 (restartRequired) = normal setelah QR pair, reconnect cepat.
+          const delay = code === 515 ? 1000 : 5000;
+          state.reconnectTimer = setTimeout(() => {
+            state.reconnectTimer = null;
             const s = this.map.get(accountId);
             if (s) this.connect(s).catch((e) => log.error({ err: e }, 'reconnect failed'));
-          }, 5000);
+          }, delay);
         }
       }
     });
