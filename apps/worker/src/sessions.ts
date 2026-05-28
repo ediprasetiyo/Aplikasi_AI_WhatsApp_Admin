@@ -134,21 +134,26 @@ class SessionManager {
       if (connection === 'close') {
         const code = (lastDisconnect?.error as Boom)?.output?.statusCode;
         const loggedOut = code === DisconnectReason.loggedOut;
-        state.status = loggedOut ? 'disconnected' : 'error';
-        state.lastError = lastDisconnect?.error?.message ?? null;
+        const replaced = code === DisconnectReason.connectionReplaced;
+        // Jangan reconnect kalau loggedOut atau replaced — keduanya butuh aksi user
+        const shouldReconnect = !loggedOut && !replaced;
+        state.status = loggedOut || replaced ? 'disconnected' : 'error';
+        state.lastError = replaced
+          ? 'Session diambil alih perangkat lain — scan QR ulang'
+          : (lastDisconnect?.error?.message ?? null);
         log.warn(
-          { accountId, code, loggedOut, err: state.lastError },
+          { accountId, code, loggedOut, replaced, err: state.lastError },
           'connection closed',
         );
         await prisma.whatsappAccount.update({
           where: { id: accountId },
           data: {
-            status: loggedOut ? 'disconnected' : 'error',
+            status: loggedOut || replaced ? 'disconnected' : 'error',
             lastError: state.lastError,
           },
         });
-        if (loggedOut) {
-          // user log out dari HP, hapus creds
+        if (loggedOut || replaced) {
+          // user logout/replace dari HP — hapus creds biar bisa scan QR ulang fresh
           await prisma.baileysSession
             .update({
               where: { whatsappAccountId: accountId },
@@ -156,8 +161,8 @@ class SessionManager {
             })
             .catch(() => null);
           this.map.delete(accountId);
-        } else {
-          // reconnect setelah jeda
+        } else if (shouldReconnect) {
+          // reconnect setelah jeda untuk error transient (network blip, dst.)
           setTimeout(() => {
             const s = this.map.get(accountId);
             if (s) this.connect(s).catch((e) => log.error({ err: e }, 'reconnect failed'));
