@@ -8,7 +8,7 @@ import {
   type AuthenticationCreds,
   type AuthenticationState,
   type SignalDataTypeMap,
-} from '@whiskeysockets/baileys';
+} from 'baileys';
 import { Boom } from '@hapi/boom';
 import QRCode from 'qrcode';
 import pino from 'pino';
