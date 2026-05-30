@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { Copy, CheckCircle2, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import type { PlanKey } from '@/lib/plans';
 import { PAYMENT_INFO } from '@/lib/payment-info';
+import { cancelPendingSubscription } from '../../actions';
 
 export function PaymentInstructions({
   plan,
@@ -17,16 +19,36 @@ export function PaymentInstructions({
   method: string;
   ktpName: string;
 }) {
-  const info =
-    method === 'dana' ? PAYMENT_INFO.dana : PAYMENT_INFO.bca;
+  const router = useRouter();
+  const [cancelPending, startCancel] = useTransition();
+  const info = method === 'dana' ? PAYMENT_INFO.dana : PAYMENT_INFO.bca;
 
   function copy(text: string, label: string) {
     navigator.clipboard.writeText(text);
     toast.success(`${label} disalin`);
   }
 
+  function onCancel() {
+    if (
+      !confirm(
+        'Batalkan pembayaran ini? Anda bisa pilih paket lain. Data yang sudah diinput akan dihapus.',
+      )
+    )
+      return;
+    startCancel(async () => {
+      const res = await cancelPendingSubscription();
+      if (res.ok) {
+        toast.success('Pembayaran dibatalkan');
+        router.push('/dashboard/billing');
+        router.refresh();
+      } else {
+        toast.error(res.error);
+      }
+    });
+  }
+
   const waMessage = encodeURIComponent(
-    `Halo Admin Auto Balas, saya sudah transfer untuk paket ${plan}.\n\nNama KTP: ${ktpName}\nMetode: ${info.name}\nJumlah: Rp ${amount.toLocaleString('id')}\n\nBukti transfer terlampir.`,
+    `Halo Admin Auto Balas, saya sudah transfer untuk paket ${plan}.\n\nNama: ${ktpName}\nMetode: ${info.name}\nJumlah: Rp ${amount.toLocaleString('id')}\n\nBukti transfer terlampir.`,
   );
   const waLink = `https://wa.me/${PAYMENT_INFO.adminWhatsapp}?text=${waMessage}`;
 
@@ -89,10 +111,10 @@ export function PaymentInstructions({
 
       {/* Kirim bukti */}
       <div className="rounded-lg border bg-white p-6 shadow-sm">
-        <h2 className="font-semibold">Step 2: Kirim Bukti Transfer + Foto KTP</h2>
+        <h2 className="font-semibold">Step 2: Kirim Bukti Transfer ke Admin</h2>
         <p className="mt-1 text-xs text-gray-500">
-          Setelah transfer, kirim foto bukti transfer + foto KTP ke WhatsApp admin
-          untuk verifikasi. Maks 1x24 jam akan diproses.
+          Setelah transfer, kirim <strong>screenshot bukti transfer</strong> ke
+          WhatsApp admin. Maks 1x24 jam akan diverifikasi & akses dibuka.
         </p>
 
         <a
@@ -115,6 +137,17 @@ export function PaymentInstructions({
         <strong className="text-gray-900">Setelah admin verifikasi:</strong> Status
         langganan otomatis aktif. Akses penuh ke semua fitur sesuai paket. Anda akan
         mendapat notifikasi via WhatsApp dari admin.
+      </div>
+
+      {/* Tombol batalkan */}
+      <div className="text-center pt-2">
+        <button
+          onClick={onCancel}
+          disabled={cancelPending}
+          className="text-sm text-gray-500 hover:text-red-600 underline disabled:opacity-50"
+        >
+          {cancelPending ? 'Membatalkan...' : 'Batalkan & pilih paket lain'}
+        </button>
       </div>
     </div>
   );

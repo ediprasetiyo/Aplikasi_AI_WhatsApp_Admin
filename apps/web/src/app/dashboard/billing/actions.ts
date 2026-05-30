@@ -76,3 +76,39 @@ export async function submitSubscription(input: {
     return { ok: false, error: (e as Error).message };
   }
 }
+
+/**
+ * Batalkan pembayaran pending — user balik ke status sebelumnya (trial atau expired).
+ * Subscription tidak dihapus, hanya status & data pembayaran direset.
+ */
+export async function cancelPendingSubscription(): Promise<ActionResult> {
+  try {
+    await requireSession();
+    const orgId = await requireActiveOrgId();
+    const sub = await prisma.subscription.findUnique({ where: { organizationId: orgId } });
+    if (!sub) return { ok: false, error: 'Tidak ada subscription' };
+    if (sub.status !== 'pending_payment') {
+      return { ok: false, error: 'Status saat ini bukan pending_payment' };
+    }
+    // Balik ke trial kalau masih dalam periode trial, atau expired kalau sudah habis
+    const now = new Date();
+    const stillTrialing = sub.trialEndsAt && sub.trialEndsAt.getTime() > now.getTime();
+    await prisma.subscription.update({
+      where: { id: sub.id },
+      data: {
+        status: stillTrialing ? 'trial_active' : 'trial_expired',
+        plan: 'trial',
+        ktpName: null,
+        ktpNumber: null,
+        phoneNumber: null,
+        paymentMethod: null,
+        paymentAmount: null,
+        paymentSubmittedAt: null,
+      },
+    });
+    revalidatePath('/dashboard/billing');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
