@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { authClient } from '@/lib/auth-client';
+import { ensureSubscription } from './actions';
 
 const INDUSTRIES = [
   'Klinik',
@@ -35,19 +36,28 @@ export function OnboardingForm() {
     if (!name.trim()) return;
 
     setLoading(true);
-    const { error } = await authClient.organization.create({
+    const { data, error } = await authClient.organization.create({
       name: name.trim(),
-      slug: slugify(name),
+      slug: `${slugify(name)}-${Math.random().toString(36).slice(2, 6)}`,
       metadata: { industry },
     });
-    setLoading(false);
-
     if (error) {
+      setLoading(false);
       toast.error(error.message ?? 'Gagal membuat workspace');
       return;
     }
-    toast.success('Workspace dibuat!');
+
+    // Set sebagai active org
+    if (data?.id) {
+      await authClient.organization.setActive({ organizationId: data.id });
+      // Pastikan subscription record tercipta (trial 14 hari)
+      await ensureSubscription(data.id);
+    }
+
+    setLoading(false);
+    toast.success('Workspace dibuat! Trial 14 hari aktif.');
     router.push('/dashboard');
+    router.refresh();
   }
 
   return (
@@ -80,11 +90,17 @@ export function OnboardingForm() {
           Bantu AI menyesuaikan gaya bahasa balasan.
         </span>
       </label>
+
+      <div className="rounded-md border border-green-200 bg-green-50 p-3 text-xs text-green-900">
+        🎁 <strong>Trial gratis 14 hari</strong> — semua fitur aktif, tanpa kartu kredit.
+        Setelah trial habis, pilih paket berlangganan.
+      </div>
+
       <button
         disabled={loading}
         className="w-full rounded-md bg-brand py-2.5 font-medium text-white hover:bg-brand-dark disabled:opacity-50"
       >
-        {loading ? 'Membuat...' : 'Buat Workspace'}
+        {loading ? 'Membuat...' : 'Buat Workspace & Mulai Trial'}
       </button>
     </form>
   );

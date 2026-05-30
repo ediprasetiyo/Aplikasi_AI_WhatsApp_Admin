@@ -95,8 +95,46 @@ model Organization {
   conversations     Conversation[]
   knowledgeEntries  KnowledgeEntry[]
   aiSetting         AiSetting?
+  subscription      Subscription?
 
   @@map("organization")
+}
+
+// ===== Subscription / Trial / Pembayaran Manual =====
+
+model Subscription {
+  id             String    @id @default(cuid())
+  organizationId String    @unique
+  // Plan: trial | starter | pro | business
+  plan           String    @default("trial")
+  // Status: trial_active | trial_expired | pending_payment | active | expired | suspended
+  status         String    @default("trial_active")
+  // Trial 14 hari sejak signup
+  trialEndsAt    DateTime?
+  // Akhir periode billing (untuk paket berbayar)
+  currentPeriodEnd DateTime?
+
+  // Data pribadi untuk verifikasi (saat upgrade ke paid)
+  ktpName        String?
+  ktpNumber      String?
+  ktpImageUrl    String?
+  phoneNumber    String?
+
+  // Pembayaran manual
+  paymentMethod  String?   // "bca" | "dana"
+  paymentAmount  Int?      // dalam rupiah
+  paymentProofUrl String?
+  paymentNotes   String?
+  paymentSubmittedAt DateTime?
+  paymentApprovedAt  DateTime?
+  paymentApprovedBy  String?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("subscription")
 }
 
 model Member {

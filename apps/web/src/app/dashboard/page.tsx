@@ -11,6 +11,8 @@ import {
 } from 'lucide-react';
 import { requireSession, getActiveOrgId } from '@/lib/session';
 import { prisma } from '@wa-admin/db';
+import { getSubscriptionInfo } from '@/lib/subscription';
+import { Calendar, Sparkles } from 'lucide-react';
 
 // Threshold safety untuk Baileys (QR scan, unofficial). Cloud API official tidak punya limit harian.
 // Aman: <100/day, Hati-hati: 100-300, Risk tinggi: >300
@@ -86,20 +88,70 @@ export default async function DashboardHome() {
   const usageLevel: 'safe' | 'caution' | 'danger' =
     sentToday < SAFE_DAILY ? 'safe' : sentToday < CAUTION_DAILY ? 'caution' : 'danger';
 
+  const subscription = activeOrgId ? await getSubscriptionInfo(activeOrgId) : null;
+
   return (
     <div className="mx-auto max-w-6xl p-6 md:p-8">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">
-          Selamat datang, {session.user.name.split(' ')[0]} 👋
-        </h1>
-        <p className="mt-1 text-gray-600">
-          Workspace aktif:{' '}
-          <span className="font-medium text-gray-900">
-            {org?.name ?? 'Belum ada workspace'}
-          </span>
-        </p>
+      <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-3xl font-bold">Selamat datang, {session.user.name.split(' ')[0]}</h1>
+          <p className="mt-1 text-gray-600">
+            Workspace aktif:{' '}
+            <span className="font-medium text-gray-900">
+              {org?.name ?? 'Belum ada workspace'}
+            </span>
+          </p>
+        </div>
+        {subscription && <SubscriptionBadge sub={subscription} />}
       </div>
+
+      {/* Trial banner */}
+      {subscription?.isTrialing && (subscription.daysRemaining ?? 0) <= 7 && (
+        <div className="mb-6 rounded-lg border border-yellow-200 bg-yellow-50 p-4">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div className="flex items-start gap-3">
+              <Calendar className="h-5 w-5 flex-shrink-0 text-yellow-700 mt-0.5" />
+              <div>
+                <div className="font-semibold text-yellow-900">
+                  Trial Anda berakhir dalam {subscription.daysRemaining} hari
+                </div>
+                <p className="mt-1 text-xs text-yellow-800">
+                  Setelah trial habis, akses akan dibatasi sampai Anda berlangganan.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/dashboard/billing"
+              className="rounded-md bg-yellow-600 px-4 py-2 text-sm font-medium text-white hover:bg-yellow-700"
+            >
+              Pilih Paket →
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {subscription?.isExpired && (
+        <div className="mb-6 rounded-lg border border-red-300 bg-red-50 p-4">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 flex-shrink-0 text-red-700 mt-0.5" />
+              <div>
+                <div className="font-semibold text-red-900">Trial sudah berakhir</div>
+                <p className="mt-1 text-xs text-red-800">
+                  Beberapa fitur dibatasi. Pilih paket berlangganan untuk akses penuh.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/dashboard/billing"
+              className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+            >
+              Berlangganan →
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Quick stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -375,6 +427,55 @@ function UsageBadge({
       Risiko tinggi ({count} pesan)
     </span>
   );
+}
+
+function SubscriptionBadge({ sub }: { sub: { plan: string; status: string; daysRemaining: number | null; isTrialing: boolean; isExpired: boolean } }) {
+  if (sub.isTrialing) {
+    return (
+      <div className="rounded-lg border border-brand bg-brand/5 px-4 py-2.5">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-brand" />
+          <span className="text-xs font-medium uppercase tracking-wide text-brand">
+            Trial
+          </span>
+        </div>
+        <div className="mt-0.5 text-lg font-bold text-gray-900">
+          {sub.daysRemaining ?? 0} hari lagi
+        </div>
+      </div>
+    );
+  }
+  if (sub.isExpired) {
+    return (
+      <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-2.5">
+        <div className="text-xs font-medium uppercase tracking-wide text-red-700">
+          Berakhir
+        </div>
+        <div className="mt-0.5 text-sm font-bold text-red-900">Perlu berlangganan</div>
+      </div>
+    );
+  }
+  if (sub.status === 'active') {
+    return (
+      <div className="rounded-lg border border-green-300 bg-green-50 px-4 py-2.5">
+        <div className="text-xs font-medium uppercase tracking-wide text-green-700">
+          Paket Aktif
+        </div>
+        <div className="mt-0.5 text-sm font-bold capitalize text-green-900">{sub.plan}</div>
+      </div>
+    );
+  }
+  if (sub.status === 'pending_payment') {
+    return (
+      <div className="rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-2.5">
+        <div className="text-xs font-medium uppercase tracking-wide text-yellow-700">
+          Menunggu Konfirmasi
+        </div>
+        <div className="mt-0.5 text-sm font-bold text-yellow-900">Pembayaran sedang dicek</div>
+      </div>
+    );
+  }
+  return null;
 }
 
 function Step({ done, href, label }: { done: boolean; href: string; label: string }) {

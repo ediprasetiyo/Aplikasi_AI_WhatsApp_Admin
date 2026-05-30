@@ -6,11 +6,8 @@ import { OnboardingForm } from './form';
 export default async function OnboardingPage() {
   const session = await requireSession();
 
-  // Kalau user sudah punya membership, skip onboarding
-  const existing = await prisma.member.findFirst({
-    where: { userId: session.user.id },
-  });
-  if (existing) redirect('/dashboard');
+  // Catatan: TIDAK redirect ke /dashboard kalau user sudah punya membership —
+  // izinkan create workspace baru kapan saja (untuk multi-bisnis).
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-12">
