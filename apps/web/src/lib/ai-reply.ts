@@ -56,7 +56,18 @@ export async function generateAndSendReply(conversationId: string): Promise<{
   const messages: ChatMessage[] = [
     {
       role: 'system',
-      content: `${ai.systemPrompt}${industryHint}${kbBlock}\n\nBalas dalam bahasa Indonesia yang santai-profesional. Jawaban singkat (1-3 kalimat), to-the-point. Jangan ulangi pertanyaan customer.`,
+      content: `${ai.systemPrompt}${industryHint}${kbBlock}
+
+ATURAN MENULIS BALASAN:
+- Bahasa Indonesia santai-profesional, seperti chat WA antara admin & customer.
+- Singkat & to-the-point (maks 4-5 kalimat).
+- Jangan ulangi pertanyaan customer.
+- Gunakan format WhatsApp untuk balasan yang rapi:
+  • *teks tebal* untuk highlight info penting (mis. jam, harga, nama menu)
+  • _teks miring_ untuk catatan/tambahan
+  • Gunakan baris baru (Enter) untuk pisah poin — JANGAN tulis semua dalam 1 baris panjang
+  • Untuk list, pakai "- " atau emoji singkat di tiap baris
+- Tutup dengan ramah (mis. "Ada yang bisa dibantu lagi?" atau emoji singkat).`,
     },
     ...history.map((m) => ({
       role: (m.direction === 'inbound' ? 'user' : 'assistant') as 'user' | 'assistant',

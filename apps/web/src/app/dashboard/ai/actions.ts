@@ -70,6 +70,50 @@ export async function createKnowledgeEntry(formData: FormData): Promise<ActionRe
   }
 }
 
+/** Import bulk knowledge dari file Excel/CSV (parsed di client jadi array) */
+const importSchema = z.object({
+  entries: z
+    .array(
+      z.object({
+        title: z.string().trim().min(2),
+        content: z.string().trim().min(5),
+      }),
+    )
+    .min(1)
+    .max(500),
+});
+
+export async function importKnowledgeEntries(
+  entries: Array<{ title: string; content: string }>,
+): Promise<ActionResult<{ created: number; skipped: number }>> {
+  try {
+    const { orgId } = await getActiveOrg();
+    const parsed = importSchema.safeParse({ entries });
+    if (!parsed.success) {
+      return {
+        ok: false,
+        error: `Validasi gagal: ${parsed.error.issues[0]?.message ?? ''}`,
+      };
+    }
+    let created = 0;
+    let skipped = 0;
+    for (const e of parsed.data.entries) {
+      try {
+        await prisma.knowledgeEntry.create({
+          data: { organizationId: orgId, title: e.title, content: e.content },
+        });
+        created++;
+      } catch {
+        skipped++;
+      }
+    }
+    revalidatePath('/dashboard/ai');
+    return { ok: true, data: { created, skipped } };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
 export async function deleteKnowledgeEntry(id: string): Promise<ActionResult> {
   try {
     const { orgId } = await getActiveOrg();

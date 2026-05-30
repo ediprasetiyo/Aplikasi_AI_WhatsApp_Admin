@@ -6,6 +6,7 @@ import { requireActiveOrgId } from '@/lib/session';
 import { prisma } from '@wa-admin/db';
 import { ReplyBox } from './reply-box';
 import { AutoRefresh } from '../auto-refresh';
+import { renderWhatsappText } from '@/lib/wa-format';
 
 export default async function ConversationPage({
   params,
@@ -73,7 +74,7 @@ export default async function ConversationPage({
                 }`}
               >
                 <div className="whitespace-pre-wrap break-words">
-                  {m.body ?? `[${m.type}]`}
+                  {m.body ? renderWhatsappText(m.body) : `[${m.type}]`}
                 </div>
                 <div
                   className={`mt-1 text-[10px] ${

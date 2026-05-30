@@ -2,6 +2,7 @@ import { requireActiveOrgId } from '@/lib/session';
 import { prisma } from '@wa-admin/db';
 import { SettingForm } from './setting-form';
 import { KbForm, KbList } from './kb-ui';
+import { ImportButton } from './import-button';
 
 export default async function AiPage() {
   const orgId = await requireActiveOrgId();
@@ -50,10 +51,22 @@ export default async function AiPage() {
         </div>
 
         <div className="rounded-lg border bg-white p-6">
-          <h2 className="font-semibold">Knowledge Base ({entries.length})</h2>
-          <p className="mt-1 text-xs text-gray-500">
-            FAQ, info produk, jam buka, harga, alamat — apapun yang sering ditanyakan customer.
-          </p>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <h2 className="font-semibold">Knowledge Base ({entries.length})</h2>
+              <p className="mt-1 text-xs text-gray-500">
+                FAQ, info produk, jam buka, harga, alamat — yang sering ditanyakan customer.
+              </p>
+            </div>
+            <ImportButton />
+          </div>
+          <div className="mt-4 rounded-md border border-yellow-200 bg-yellow-50 p-3 text-xs text-yellow-900">
+            💡 <strong>Tips format WhatsApp</strong>: pakai{' '}
+            <code>*bold*</code> untuk tebal,{' '}
+            <code>_italic_</code> untuk miring,{' '}
+            <code>~coret~</code> untuk dicoret. Enter = baris baru. Format ini akan
+            terkirim rapi ke customer di WhatsApp.
+          </div>
           <div className="mt-4">
             <KbForm />
           </div>
