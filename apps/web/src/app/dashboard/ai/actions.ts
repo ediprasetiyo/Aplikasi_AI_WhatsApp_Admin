@@ -5,7 +5,9 @@ import { z } from 'zod';
 import { prisma } from '@wa-admin/db';
 import { requireSession, getActiveOrgId } from '@/lib/session';
 
-export type ActionResult = { ok: true } | { ok: false; error: string };
+export type ActionResult<T = undefined> =
+  | { ok: true; data?: T }
+  | { ok: false; error: string };
 
 async function getActiveOrg() {
   const session = await requireSession();
