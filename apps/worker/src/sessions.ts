@@ -105,7 +105,8 @@ class SessionManager {
       printQRInTerminal: false,
       browser: ['Auto Balas', 'Chrome', '120.0.0'],
       syncFullHistory: false,
-      markOnlineOnConnect: false,
+      // WAJIB true biar WhatsApp consider device online & deliver pesan ke kita
+      markOnlineOnConnect: true,
       // VPS kecil/koneksi lambat butuh timeout lebih panjang biar init queries
       // tidak timeout duluan & bikin connection putus
       defaultQueryTimeoutMs: 60_000,
@@ -239,7 +240,23 @@ class SessionManager {
     });
 
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
-      if (type !== 'notify') return;
+      // Log ALL incoming events untuk debug
+      log.info(
+        {
+          accountId,
+          type,
+          count: messages.length,
+          jids: messages.map((m) => m.key.remoteJid),
+          fromMe: messages.map((m) => m.key.fromMe),
+        },
+        'messages.upsert event received',
+      );
+      // Baileys 6.7.x kadang kirim type 'append' untuk pesan masuk real-time, bukan 'notify'
+      // Terima keduanya — fromMe filter sudah cukup.
+      if (type !== 'notify' && type !== 'append') {
+        log.debug({ accountId, type }, 'skip non-realtime message type');
+        return;
+      }
       for (const msg of messages) {
         if (msg.key.fromMe) continue;
         const remoteJid = msg.key.remoteJid ?? '';
