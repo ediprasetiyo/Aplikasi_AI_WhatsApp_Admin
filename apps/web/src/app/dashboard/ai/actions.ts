@@ -3,14 +3,14 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { prisma } from '@wa-admin/db';
-import { requireSession } from '@/lib/session';
+import { requireSession, getActiveOrgId } from '@/lib/session';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
 async function getActiveOrg() {
   const session = await requireSession();
-  const orgId = session.session.activeOrganizationId;
-  if (!orgId) throw new Error('Pilih workspace dulu');
+  const orgId = await getActiveOrgId();
+  if (!orgId) throw new Error('Workspace belum ada — buat dulu di /onboarding');
   return { session, orgId };
 }
 

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@wa-admin/db';
-import { requireSession } from '@/lib/session';
+import { getActiveOrgId } from '@/lib/session';
 import { worker, type SessionStatus } from '@/lib/worker-client';
 
 export type ActionResult<T = undefined> =
@@ -10,9 +10,8 @@ export type ActionResult<T = undefined> =
   | { ok: false; error: string };
 
 async function getOrgId() {
-  const session = await requireSession();
-  const orgId = session.session.activeOrganizationId;
-  if (!orgId) throw new Error('Pilih workspace dulu');
+  const orgId = await getActiveOrgId();
+  if (!orgId) throw new Error('Workspace belum ada — buat dulu di /onboarding');
   return orgId;
 }
 

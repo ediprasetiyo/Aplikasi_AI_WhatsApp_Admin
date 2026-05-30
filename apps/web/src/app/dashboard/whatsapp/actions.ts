@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { prisma } from '@wa-admin/db';
-import { requireSession } from '@/lib/session';
+import { requireSession, getActiveOrgId } from '@/lib/session';
 import { getPhoneNumberInfo } from '@/lib/whatsapp';
 
 const connectSchema = z.object({
@@ -16,8 +16,8 @@ export type ActionResult = { ok: true } | { ok: false; error: string };
 
 export async function connectWhatsappAccount(formData: FormData): Promise<ActionResult> {
   const session = await requireSession();
-  const orgId = session.session.activeOrganizationId;
-  if (!orgId) return { ok: false, error: 'Pilih workspace dulu' };
+  const orgId = await getActiveOrgId();
+  if (!orgId) return { ok: false, error: 'Workspace belum ada' };
 
   // pastikan user adalah owner/admin di workspace
   const member = await prisma.member.findUnique({
@@ -77,9 +77,9 @@ export async function connectWhatsappAccount(formData: FormData): Promise<Action
 }
 
 export async function disconnectWhatsappAccount(accountId: string): Promise<ActionResult> {
-  const session = await requireSession();
-  const orgId = session.session.activeOrganizationId;
-  if (!orgId) return { ok: false, error: 'Pilih workspace dulu' };
+  await requireSession();
+  const orgId = await getActiveOrgId();
+  if (!orgId) return { ok: false, error: 'Workspace belum ada' };
 
   const account = await prisma.whatsappAccount.findFirst({
     where: { id: accountId, organizationId: orgId },

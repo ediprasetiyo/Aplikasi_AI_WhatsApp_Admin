@@ -1,4 +1,4 @@
-import { requireSession } from '@/lib/session';
+import { requireSession, getActiveOrgId } from '@/lib/session';
 import { prisma } from '@wa-admin/db';
 
 function parseIndustry(metadata: string | null): string | null {
@@ -14,7 +14,7 @@ function parseIndustry(metadata: string | null): string | null {
 
 export default async function SettingsPage() {
   const session = await requireSession();
-  const activeOrgId = session.session.activeOrganizationId;
+  const activeOrgId = await getActiveOrgId();
   const org = activeOrgId
     ? await prisma.organization.findUnique({ where: { id: activeOrgId } })
     : null;
