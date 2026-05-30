@@ -240,7 +240,6 @@ class SessionManager {
     });
 
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
-      // Log ALL incoming events untuk debug
       log.info(
         {
           accountId,
@@ -251,16 +250,23 @@ class SessionManager {
         },
         'messages.upsert event received',
       );
-      // Baileys 6.7.x kadang kirim type 'append' untuk pesan masuk real-time, bukan 'notify'
-      // Terima keduanya — fromMe filter sudah cukup.
-      if (type !== 'notify' && type !== 'append') {
-        log.debug({ accountId, type }, 'skip non-realtime message type');
-        return;
-      }
+      // Baileys 6.7.x kirim type 'append' untuk pesan masuk real-time, atau 'notify'
+      if (type !== 'notify' && type !== 'append') return;
+
       for (const msg of messages) {
         if (msg.key.fromMe) continue;
         const remoteJid = msg.key.remoteJid ?? '';
-        if (!remoteJid.endsWith('@s.whatsapp.net')) continue; // skip group
+        // Skip group chats & status broadcast
+        if (remoteJid.endsWith('@g.us')) continue;
+        if (remoteJid.endsWith('@broadcast')) continue;
+        if (remoteJid === 'status@broadcast') continue;
+        // Terima personal chat: @s.whatsapp.net (lama) ATAU @lid (baru, sejak 2024)
+        const isPersonalChat =
+          remoteJid.endsWith('@s.whatsapp.net') || remoteJid.endsWith('@lid');
+        if (!isPersonalChat) {
+          log.debug({ accountId, remoteJid }, 'skip non-personal chat');
+          continue;
+        }
         const customerPhone = remoteJid.split('@')[0]!;
         const body =
           msg.message?.conversation ??
@@ -381,7 +387,14 @@ class SessionManager {
     if (!state || state.status !== 'connected' || !state.sock) {
       throw new Error('Session belum connected');
     }
-    const jid = to.includes('@') ? to : `${to}@s.whatsapp.net`;
+    // Deteksi format: kalau sudah ada @, pakai apa adanya. Kalau cuma angka:
+    //   - 15+ digit → LID identifier (@lid format baru)
+    //   - 8-14 digit → nomor telepon (@s.whatsapp.net format lama)
+    const jid = to.includes('@')
+      ? to
+      : to.length >= 15
+        ? `${to}@lid`
+        : `${to}@s.whatsapp.net`;
     const result = await state.sock.sendMessage(jid, { text });
     return result?.key?.id ?? null;
   }
