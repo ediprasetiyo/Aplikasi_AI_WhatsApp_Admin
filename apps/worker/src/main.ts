@@ -114,6 +114,8 @@ app.post('/messages/send', async (req, res) => {
 app.listen(PORT, () => {
   log.info(`Baileys worker listening on http://localhost:${PORT}`);
   log.info(`Web origin allowed: ${ORIGIN.join(', ')}`);
+  // Auto-resume Baileys session yang punya creds di DB
+  sessions.resumeAll().catch((e) => log.error({ err: e }, 'resumeAll failed'));
 });
 
 // Graceful shutdown

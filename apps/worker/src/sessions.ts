@@ -37,6 +37,28 @@ class SessionManager {
     return this.map.size;
   }
 
+  /**
+   * Saat worker startup, auto-resume semua session Baileys yang punya creds di DB.
+   * Tanpa ini, user harus scan QR ulang setiap worker restart.
+   */
+  async resumeAll() {
+    const accounts = await prisma.whatsappAccount.findMany({
+      where: {
+        provider: 'baileys',
+        baileysSession: { credsJson: { not: null } },
+      },
+      include: { baileysSession: true },
+    });
+    log.info({ count: accounts.length }, 'auto-resuming Baileys sessions');
+    for (const acc of accounts) {
+      try {
+        await this.start(acc.id, acc.organizationId);
+      } catch (e) {
+        log.error({ err: e, accountId: acc.id }, 'failed to resume session');
+      }
+    }
+  }
+
   async start(accountId: string, organizationId: string) {
     const existing = this.map.get(accountId);
     if (existing && existing.status === 'connected') {
