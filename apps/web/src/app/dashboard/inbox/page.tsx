@@ -4,6 +4,7 @@ import { id as idLocale } from 'date-fns/locale';
 import { requireActiveOrgId } from '@/lib/session';
 import { prisma } from '@wa-admin/db';
 import { SimulateButton } from './simulate-button';
+import { AutoRefresh } from './auto-refresh';
 
 export default async function InboxPage() {
   const orgId = await requireActiveOrgId();
@@ -23,6 +24,7 @@ export default async function InboxPage() {
 
   return (
     <div className="p-8">
+      <AutoRefresh intervalMs={5000} />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Inbox</h1>

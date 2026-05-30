@@ -346,7 +346,14 @@ class SessionManager {
           // POST {WEB_URL}/api/internal/ai-reply { conversationId }
           await triggerAiReply(convo.id);
         } catch (e) {
-          log.error({ err: e, accountId }, 'failed to persist message');
+          const err = e as { code?: string };
+          // P2002 = unique constraint (waMessageId), biasanya duplicate dari event
+          // append + notify Baileys. Aman diabaikan.
+          if (err.code === 'P2002') {
+            log.debug({ accountId, msgId: msg.key.id }, 'skip duplicate message');
+          } else {
+            log.error({ err: e, accountId }, 'failed to persist message');
+          }
         }
       }
     });

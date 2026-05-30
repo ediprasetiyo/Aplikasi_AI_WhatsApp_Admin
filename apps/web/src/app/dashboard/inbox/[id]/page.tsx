@@ -5,6 +5,7 @@ import { ArrowLeft } from 'lucide-react';
 import { requireActiveOrgId } from '@/lib/session';
 import { prisma } from '@wa-admin/db';
 import { ReplyBox } from './reply-box';
+import { AutoRefresh } from '../auto-refresh';
 
 export default async function ConversationPage({
   params,
@@ -27,6 +28,7 @@ export default async function ConversationPage({
 
   return (
     <div className="flex h-screen flex-col">
+      <AutoRefresh intervalMs={4000} />
       {/* header */}
       <div className="border-b bg-white px-6 py-3">
         <Link
