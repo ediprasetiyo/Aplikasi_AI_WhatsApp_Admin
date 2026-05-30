@@ -36,7 +36,9 @@ export function BaileysConnect({
       ? 'connected'
       : existingStatus === 'pending_qr'
         ? 'pending_qr'
-        : 'idle',
+        : existingStatus === 'connecting'
+          ? 'connecting'
+          : 'idle',
   );
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   const [phone, setPhone] = useState<string | null>(existingPhone ?? null);
@@ -60,12 +62,19 @@ export function BaileysConnect({
       if (data.status === 'connected' || data.status === 'active') {
         setStatus('connected');
         setQrUrl(null);
+        setErrorMsg(null);
         toast.success('WhatsApp terhubung!');
         router.refresh();
       } else if (data.status === 'pending_qr') {
         setStatus('pending_qr');
       } else if (data.status === 'connecting') {
+        // Transient — JANGAN tampilkan QR lama, tampil spinner
         setStatus('connecting');
+        setQrUrl(null);
+      } else if (data.status === 'disconnected') {
+        // Hard disconnect — user perlu scan QR ulang
+        setStatus('error');
+        setErrorMsg(data.lastError ?? 'Koneksi terputus, scan QR ulang');
       } else if (data.status === 'error') {
         setStatus('error');
         setErrorMsg(data.lastError);
@@ -138,9 +147,15 @@ export function BaileysConnect({
         <div className="rounded-lg border bg-white p-8 text-center">
           <Loader2 className="mx-auto h-12 w-12 animate-spin text-brand" />
           <p className="mt-4 text-sm text-gray-600">
-            Menyiapkan QR code... <br />
-            Ini sekitar 5-10 detik.
+            {status === 'starting'
+              ? 'Menyiapkan QR code... ini sekitar 5-10 detik.'
+              : 'Menyambungkan ke WhatsApp... mohon tunggu 30-60 detik.'}
           </p>
+          {status === 'connecting' && (
+            <p className="mt-2 text-xs text-gray-400">
+              Jangan tutup halaman ini. Sambungan biasanya stabil setelah ~1 menit pertama.
+            </p>
+          )}
         </div>
       )}
 

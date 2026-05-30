@@ -178,20 +178,26 @@ class SessionManager {
         const code = (lastDisconnect?.error as Boom)?.output?.statusCode;
         const loggedOut = code === DisconnectReason.loggedOut;
         const replaced = code === DisconnectReason.connectionReplaced;
-        // Jangan reconnect kalau loggedOut atau replaced — keduanya butuh aksi user
+        const restartRequired = code === DisconnectReason.restartRequired || code === 515;
+        // Jangan reconnect kalau loggedOut atau replaced — butuh aksi user
         const shouldReconnect = !loggedOut && !replaced;
-        state.status = loggedOut || replaced ? 'disconnected' : 'error';
+        // Transient (restart/timeout/network blip) — anggap "connecting", bukan error
+        const isTransient = shouldReconnect;
+        state.status = loggedOut || replaced ? 'disconnected' : 'connecting';
+        // Hanya simpan error message kalau benar-benar permanent error
         state.lastError = replaced
           ? 'Session diambil alih perangkat lain — scan QR ulang'
-          : (lastDisconnect?.error?.message ?? null);
+          : loggedOut
+            ? 'Logout dari HP'
+            : null;
         log.warn(
-          { accountId, code, loggedOut, replaced, err: state.lastError },
+          { accountId, code, loggedOut, replaced, restartRequired, transient: isTransient },
           'connection closed',
         );
         await prisma.whatsappAccount.update({
           where: { id: accountId },
           data: {
-            status: loggedOut || replaced ? 'disconnected' : 'error',
+            status: loggedOut || replaced ? 'disconnected' : 'connecting',
             lastError: state.lastError,
           },
         });
@@ -213,7 +219,7 @@ class SessionManager {
           // reconnect setelah jeda untuk error transient (network blip, dst.)
           // Guard !state.reconnectTimer biar tidak schedule multiple reconnect bersamaan.
           // Code 515 (restartRequired) = normal setelah QR pair, reconnect cepat.
-          const delay = code === 515 ? 1000 : 5000;
+          const delay = restartRequired ? 500 : 3000;
           state.reconnectTimer = setTimeout(() => {
             state.reconnectTimer = null;
             const s = this.map.get(accountId);
