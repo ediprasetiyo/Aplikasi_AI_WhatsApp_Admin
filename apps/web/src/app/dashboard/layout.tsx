@@ -67,13 +67,17 @@ export default async function DashboardLayout({ children }: { children: React.Re
           {showAdmin && (
             <>
               <div className="my-3 border-t border-gray-200" />
-              <Link
-                href="/admin"
+              <a
+                href={
+                  process.env.NODE_ENV === 'production'
+                    ? 'https://admin.autobalas.my.id'
+                    : '/admin'
+                }
                 className="flex items-center gap-3 rounded-md px-3 py-2 text-red-600 hover:bg-red-50 text-sm"
               >
                 <Shield className="h-4 w-4" />
                 Super Admin
-              </Link>
+              </a>
             </>
           )}
         </nav>

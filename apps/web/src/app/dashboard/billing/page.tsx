@@ -41,9 +41,25 @@ export default async function BillingPage() {
 
       {/* Grid paket */}
       <div className="mt-10 grid gap-6 md:grid-cols-3">
-        <PlanCard planKey="starter" icon={Sparkles} currentPlan={sub.plan} />
-        <PlanCard planKey="pro" icon={Crown} currentPlan={sub.plan} highlight />
-        <PlanCard planKey="business" icon={Building2} currentPlan={sub.plan} />
+        <PlanCard
+          planKey="starter"
+          icon={Sparkles}
+          currentPlan={sub.plan}
+          status={sub.status}
+        />
+        <PlanCard
+          planKey="pro"
+          icon={Crown}
+          currentPlan={sub.plan}
+          status={sub.status}
+          highlight
+        />
+        <PlanCard
+          planKey="business"
+          icon={Building2}
+          currentPlan={sub.plan}
+          status={sub.status}
+        />
       </div>
 
       <p className="mt-8 text-center text-xs text-gray-500">
@@ -58,15 +74,19 @@ function PlanCard({
   planKey,
   icon: Icon,
   currentPlan,
+  status,
   highlight = false,
 }: {
   planKey: PlanKey;
   icon: React.ComponentType<{ className?: string }>;
   currentPlan: string;
+  status: string;
   highlight?: boolean;
 }) {
   const plan = PLANS[planKey];
   const isCurrent = currentPlan === planKey;
+  const isActiveCurrent = isCurrent && status === 'active';
+  const isPendingCurrent = isCurrent && status === 'pending_payment';
 
   return (
     <div
@@ -107,13 +127,20 @@ function PlanCard({
       </ul>
 
       <div className="mt-6">
-        {isCurrent ? (
+        {isActiveCurrent ? (
           <button
             disabled
-            className="w-full rounded-md border-2 border-gray-200 bg-gray-50 py-2.5 text-sm font-medium text-gray-500"
+            className="w-full rounded-md border-2 border-green-300 bg-green-50 py-2.5 text-sm font-medium text-green-700"
           >
-            Paket Anda Saat Ini
+            ✓ Paket Anda Saat Ini
           </button>
+        ) : isPendingCurrent ? (
+          <Link
+            href={`/dashboard/billing/checkout/${planKey}`}
+            className="block w-full rounded-md bg-yellow-500 py-2.5 text-center text-sm font-medium text-white hover:bg-yellow-600"
+          >
+            Lanjutkan Pembayaran →
+          </Link>
         ) : (
           <Link
             href={`/dashboard/billing/checkout/${planKey}`}
