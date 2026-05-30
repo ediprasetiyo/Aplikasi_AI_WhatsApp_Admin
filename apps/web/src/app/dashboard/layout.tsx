@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { MessageCircleReply, LayoutDashboard, Users, Settings, LogOut, Phone, Inbox, Sparkles } from 'lucide-react';
-import { requireSession } from '@/lib/session';
+import { MessageCircleReply, LayoutDashboard, Users, Settings, LogOut, Phone, Inbox, Sparkles, Shield } from 'lucide-react';
+import { requireSession, isSuperAdmin } from '@/lib/session';
 import { prisma } from '@wa-admin/db';
 import { SignOutButton } from './_components/sign-out-button';
 import { OrgSwitcher } from './_components/org-switcher';
@@ -20,6 +20,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const activeOrgId = session.session.activeOrganizationId ?? memberships[0]!.organizationId;
   const activeMembership =
     memberships.find((m) => m.organizationId === activeOrgId) ?? memberships[0]!;
+
+  const showAdmin = await isSuperAdmin();
 
   return (
     <div className="flex min-h-screen">
@@ -59,6 +61,18 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <NavLink href="/dashboard/settings" icon={Settings}>
             Setting
           </NavLink>
+          {showAdmin && (
+            <>
+              <div className="my-3 border-t border-gray-200" />
+              <Link
+                href="/admin"
+                className="flex items-center gap-3 rounded-md px-3 py-2 text-red-600 hover:bg-red-50 text-sm"
+              >
+                <Shield className="h-4 w-4" />
+                Super Admin
+              </Link>
+            </>
+          )}
         </nav>
 
         {/* Spacer push profil ke bawah, tetap di posisi tanpa ikut scroll */}

@@ -226,8 +226,11 @@ model Conversation {
   id                String   @id @default(cuid())
   organizationId    String
   whatsappAccountId String
-  // nomor customer (e.g. "628987654321" tanpa +)
+  // nomor customer (e.g. "628987654321" tanpa +) — untuk display
   customerPhone     String
+  // JID lengkap untuk routing send (e.g., "89356962426980@lid" / "628xxx@s.whatsapp.net")
+  // Wajib untuk LID baru — length-based heuristic tidak reliable
+  customerJid       String?
   // nama dari WA profile, opsional
   customerName      String?
   // last activity untuk sorting inbox

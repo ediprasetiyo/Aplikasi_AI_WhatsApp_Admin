@@ -48,3 +48,23 @@ export async function requireActiveOrgId(): Promise<string> {
   if (!orgId) redirect('/onboarding');
   return orgId;
 }
+
+/**
+ * Email yang dianggap super admin aplikasi (pemilik). Pisah dari role member di
+ * organization (yang hanya scope per workspace). Super admin punya akses ke /admin.
+ */
+const SUPER_ADMIN_EMAILS = ['edi.prasetiyo1994@gmail.com'];
+
+export async function isSuperAdmin(): Promise<boolean> {
+  const session = await getSession();
+  if (!session) return false;
+  return SUPER_ADMIN_EMAILS.includes(session.user.email.toLowerCase());
+}
+
+export async function requireSuperAdmin() {
+  const session = await requireSession();
+  if (!SUPER_ADMIN_EMAILS.includes(session.user.email.toLowerCase())) {
+    redirect('/dashboard');
+  }
+  return session;
+}

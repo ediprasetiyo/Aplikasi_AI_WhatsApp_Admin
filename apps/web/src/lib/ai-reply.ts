@@ -110,8 +110,9 @@ ATURAN MENULIS BALASAN:
   try {
     let wamid: string | null = null;
     if (acc.provider === 'baileys') {
-      // Lewat worker
-      const res = await worker.send(acc.id, convo.customerPhone, replyText);
+      // Lewat worker — pakai customerJid lengkap (mis. "xxx@lid") biar routing benar
+      const targetJid = convo.customerJid ?? `${convo.customerPhone}@s.whatsapp.net`;
+      const res = await worker.send(acc.id, targetJid, replyText);
       wamid = res.messageId;
     } else {
       // Cloud API langsung ke Meta

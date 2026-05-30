@@ -290,6 +290,8 @@ class SessionManager {
           continue;
         }
         const customerPhone = remoteJid.split('@')[0]!;
+        // Simpan JID lengkap (dgn suffix @lid / @s.whatsapp.net) untuk routing send
+        const customerJid = remoteJid;
         const body =
           msg.message?.conversation ??
           msg.message?.extendedTextMessage?.text ??
@@ -320,10 +322,12 @@ class SessionManager {
               organizationId: state.organizationId,
               whatsappAccountId: accountId,
               customerPhone,
+              customerJid,
               customerName: pushName,
               lastMessageAt: new Date(),
             },
             update: {
+              customerJid, // update JID kalau berubah (rare tapi possible)
               customerName: pushName ?? undefined,
               lastMessageAt: new Date(),
             },
@@ -416,14 +420,10 @@ class SessionManager {
     if (!state || state.status !== 'connected' || !state.sock) {
       throw new Error('Session belum connected');
     }
-    // Deteksi format: kalau sudah ada @, pakai apa adanya. Kalau cuma angka:
-    //   - 15+ digit → LID identifier (@lid format baru)
-    //   - 8-14 digit → nomor telepon (@s.whatsapp.net format lama)
-    const jid = to.includes('@')
-      ? to
-      : to.length >= 15
-        ? `${to}@lid`
-        : `${to}@s.whatsapp.net`;
+    // `to` SEHARUSNYA sudah berbentuk JID lengkap (mis. "628xxx@s.whatsapp.net" atau
+    // "89xxx@lid") dari caller. Length-based heuristic tidak reliable.
+    // Fallback ke @s.whatsapp.net hanya kalau caller kasih raw number tanpa @.
+    const jid = to.includes('@') ? to : `${to}@s.whatsapp.net`;
     const result = await state.sock.sendMessage(jid, { text });
     return result?.key?.id ?? null;
   }

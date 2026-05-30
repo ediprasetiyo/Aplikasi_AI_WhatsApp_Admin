@@ -6,6 +6,7 @@ import { prisma } from '@wa-admin/db';
 import { requireSession, getActiveOrgId } from '@/lib/session';
 import { sendTextMessage } from '@/lib/whatsapp';
 import { generateAndSendReply } from '@/lib/ai-reply';
+import { worker } from '@/lib/worker-client';
 
 export type ActionResult<T = undefined> =
   | { ok: true; data?: T }
@@ -65,16 +66,26 @@ export async function sendManualReply(input: {
     }
 
     try {
-      const result = await sendTextMessage({
-        phoneNumberId: acc.phoneNumberId,
-        accessToken: acc.accessToken,
-        to: convo.customerPhone,
-        text: parsed.data.text,
-      });
-      await prisma.message.update({
-        where: { id: saved.id },
-        data: { status: 'sent', waMessageId: result.messages[0]?.id },
-      });
+      if (acc.provider === 'baileys') {
+        // Pakai customerJid lengkap untuk routing yang benar (@lid vs @s.whatsapp.net)
+        const targetJid = convo.customerJid ?? `${convo.customerPhone}@s.whatsapp.net`;
+        const res = await worker.send(acc.id, targetJid, parsed.data.text);
+        await prisma.message.update({
+          where: { id: saved.id },
+          data: { status: 'sent', waMessageId: res.messageId ?? undefined },
+        });
+      } else {
+        const result = await sendTextMessage({
+          phoneNumberId: acc.phoneNumberId,
+          accessToken: acc.accessToken,
+          to: convo.customerPhone,
+          text: parsed.data.text,
+        });
+        await prisma.message.update({
+          where: { id: saved.id },
+          data: { status: 'sent', waMessageId: result.messages[0]?.id },
+        });
+      }
     } catch (e) {
       await prisma.message.update({ where: { id: saved.id }, data: { status: 'failed' } });
       return { ok: false, error: (e as Error).message };
