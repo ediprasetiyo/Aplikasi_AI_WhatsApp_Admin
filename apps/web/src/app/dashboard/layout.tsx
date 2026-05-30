@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { MessageCircleReply, LayoutDashboard, Users, Settings, LogOut, Phone, Inbox, Sparkles, Shield } from 'lucide-react';
+import { MessageCircleReply, LayoutDashboard, Users, Settings, LogOut, Phone, Inbox, Sparkles, Shield, CreditCard } from 'lucide-react';
 import { requireSession, isSuperAdmin } from '@/lib/session';
 import { prisma } from '@wa-admin/db';
 import { SignOutButton } from './_components/sign-out-button';
@@ -57,6 +57,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </NavLink>
           <NavLink href="/dashboard/team" icon={Users}>
             Tim
+          </NavLink>
+          <NavLink href="/dashboard/billing" icon={CreditCard}>
+            Berlangganan
           </NavLink>
           <NavLink href="/dashboard/settings" icon={Settings}>
             Setting
