@@ -23,8 +23,8 @@ export default async function OnboardingPage() {
     pro: 2,
     business: 3,
   };
-  const bestPlan = planKeys.reduce(
-    (best, p) => (planRank[p] > planRank[best] ? p : best),
+  const bestPlan = planKeys.reduce<string>(
+    (best, p) => ((planRank[p] ?? 0) > (planRank[best] ?? 0) ? p : best),
     'trial',
   );
   const planConfig = getPlan(bestPlan);
