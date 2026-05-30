@@ -1,5 +1,5 @@
 import { Zap, Shield } from 'lucide-react';
-import { requireSession } from '@/lib/session';
+import { requireActiveOrgId } from '@/lib/session';
 import { prisma } from '@wa-admin/db';
 import { BaileysConnect } from './baileys-connect';
 import { ConnectForm } from './connect-form';
@@ -11,9 +11,7 @@ export default async function WhatsappPage({
 }: {
   searchParams: Promise<{ mode?: string }>;
 }) {
-  const session = await requireSession();
-  const orgId = session.session.activeOrganizationId;
-  if (!orgId) return <div className="p-8">Pilih workspace dulu.</div>;
+  const orgId = await requireActiveOrgId();
 
   const { mode = 'qr' } = await searchParams;
 

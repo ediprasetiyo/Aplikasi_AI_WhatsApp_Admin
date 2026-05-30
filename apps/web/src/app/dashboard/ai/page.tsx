@@ -1,12 +1,10 @@
-import { requireSession } from '@/lib/session';
+import { requireActiveOrgId } from '@/lib/session';
 import { prisma } from '@wa-admin/db';
 import { SettingForm } from './setting-form';
 import { KbForm, KbList } from './kb-ui';
 
 export default async function AiPage() {
-  const session = await requireSession();
-  const orgId = session.session.activeOrganizationId;
-  if (!orgId) return <div className="p-8">Pilih workspace dulu.</div>;
+  const orgId = await requireActiveOrgId();
 
   const [setting, entries] = await Promise.all([
     prisma.aiSetting.findUnique({ where: { organizationId: orgId } }),

@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { format } from 'date-fns';
 import { ArrowLeft } from 'lucide-react';
-import { requireSession } from '@/lib/session';
+import { requireActiveOrgId } from '@/lib/session';
 import { prisma } from '@wa-admin/db';
 import { ReplyBox } from './reply-box';
 
@@ -12,9 +12,7 @@ export default async function ConversationPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const session = await requireSession();
-  const orgId = session.session.activeOrganizationId;
-  if (!orgId) return <div className="p-8">Pilih workspace dulu.</div>;
+  const orgId = await requireActiveOrgId();
 
   const convo = await prisma.conversation.findFirst({
     where: { id, organizationId: orgId },

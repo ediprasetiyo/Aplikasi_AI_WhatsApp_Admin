@@ -1,11 +1,9 @@
-import { requireSession } from '@/lib/session';
+import { requireActiveOrgId } from '@/lib/session';
 import { prisma } from '@wa-admin/db';
 import { InviteForm } from './invite-form';
 
 export default async function TeamPage() {
-  const session = await requireSession();
-  const activeOrgId = session.session.activeOrganizationId;
-  if (!activeOrgId) return <div className="p-8">Pilih workspace dulu.</div>;
+  const activeOrgId = await requireActiveOrgId();
 
   const [members, invitations] = await Promise.all([
     prisma.member.findMany({
