@@ -3,26 +3,36 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Trash2, Eye, EyeOff } from 'lucide-react';
-import { createKnowledgeEntry, deleteKnowledgeEntry } from './actions';
+import { Trash2, Pencil, Eye, X, Check } from 'lucide-react';
+import {
+  createKnowledgeEntry,
+  deleteKnowledgeEntry,
+  updateKnowledgeEntry,
+} from './actions';
 import { renderWhatsappText } from '@/lib/wa-format';
+import { RichTextarea } from './rich-textarea';
 
 export function KbForm() {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [showPreview, setShowPreview] = useState(false);
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const fd = new FormData(e.currentTarget);
+    if (!title.trim() || !content.trim()) {
+      toast.error('Judul & isi wajib diisi');
+      return;
+    }
+    const fd = new FormData();
+    fd.set('title', title);
+    fd.set('content', content);
     startTransition(async () => {
       const res = await createKnowledgeEntry(fd);
       if (res.ok) {
         toast.success('Knowledge ditambahkan');
-        (e.target as HTMLFormElement).reset();
+        setTitle('');
         setContent('');
-        setShowPreview(false);
         router.refresh();
       } else {
         toast.error(res.error);
@@ -33,61 +43,22 @@ export function KbForm() {
   return (
     <form onSubmit={onSubmit} className="space-y-3">
       <input
-        name="title"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
         placeholder="Judul (mis. Jam Operasional)"
         required
         className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
       />
-      <div>
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-xs text-gray-500">
-            Isi · gunakan <code>*tebal*</code> · <code>_miring_</code> · Enter = baris baru
-          </span>
-          <button
-            type="button"
-            onClick={() => setShowPreview((v) => !v)}
-            className="inline-flex items-center gap-1 text-xs text-brand hover:underline"
-          >
-            {showPreview ? (
-              <>
-                <EyeOff className="h-3 w-3" /> Edit
-              </>
-            ) : (
-              <>
-                <Eye className="h-3 w-3" /> Preview WA
-              </>
-            )}
-          </button>
-        </div>
-
-        {showPreview ? (
-          <div className="min-h-[160px] rounded-md border border-gray-300 bg-[#e5ddd5] p-3">
-            <div className="max-w-[80%] rounded-lg bg-white p-3 text-sm shadow-sm">
-              <div className="whitespace-pre-wrap break-words">
-                {content ? renderWhatsappText(content) : (
-                  <span className="text-gray-400 italic">Preview kosong</span>
-                )}
-              </div>
-            </div>
-          </div>
-        ) : (
-          <textarea
-            name="content"
-            placeholder={`Isi knowledge. Contoh:\n*Menu Andalan:*\n- Sate Wayang Rp25rb\n- Soto Ayam Rp20rb\n\n_Tersedia jam 11.00-20.00_`}
-            rows={6}
-            required
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand font-mono"
-          />
-        )}
-        {/* Hidden input untuk form submission saat preview mode */}
-        {showPreview && <input type="hidden" name="content" value={content} />}
-      </div>
+      <RichTextarea
+        value={content}
+        onChange={setContent}
+        placeholder={`Isi knowledge. Contoh:\n*Menu Andalan:*\n- Sate Wayang Rp25rb\n- Soto Ayam Rp20rb\n\n_Tersedia jam 11.00-20.00_`}
+        rows={8}
+      />
 
       <button
-        disabled={pending || !content.trim()}
-        className="w-full rounded-md border border-brand py-2 text-sm font-medium text-brand hover:bg-brand hover:text-white disabled:opacity-50"
+        disabled={pending || !content.trim() || !title.trim()}
+        className="w-full rounded-md bg-brand py-2 text-sm font-medium text-white hover:bg-brand-dark disabled:opacity-50"
       >
         {pending ? 'Menambahkan...' : '+ Tambah Knowledge'}
       </button>
@@ -95,7 +66,11 @@ export function KbForm() {
   );
 }
 
-export function KbList({ entries }: { entries: Array<{ id: string; title: string; content: string }> }) {
+export function KbList({
+  entries,
+}: {
+  entries: Array<{ id: string; title: string; content: string }>;
+}) {
   if (entries.length === 0) {
     return (
       <div className="rounded-md border border-dashed bg-gray-50 px-4 py-8 text-center">
@@ -107,7 +82,7 @@ export function KbList({ entries }: { entries: Array<{ id: string; title: string
     );
   }
   return (
-    <ul className="space-y-2 max-h-[600px] overflow-y-auto pr-2 -mr-2">
+    <ul className="space-y-2 max-h-[700px] overflow-y-auto pr-2 -mr-2">
       {entries.map((e) => (
         <KbItem key={e.id} entry={e} />
       ))}
@@ -118,6 +93,9 @@ export function KbList({ entries }: { entries: Array<{ id: string; title: string
 function KbItem({ entry }: { entry: { id: string; title: string; content: string } }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [mode, setMode] = useState<'view' | 'edit' | 'preview'>('view');
+  const [editTitle, setEditTitle] = useState(entry.title);
+  const [editContent, setEditContent] = useState(entry.content);
 
   function onDelete() {
     if (!confirm(`Hapus "${entry.title}"?`)) return;
@@ -132,23 +110,119 @@ function KbItem({ entry }: { entry: { id: string; title: string; content: string
     });
   }
 
+  function onSave() {
+    startTransition(async () => {
+      const res = await updateKnowledgeEntry(entry.id, {
+        title: editTitle,
+        content: editContent,
+      });
+      if (res.ok) {
+        toast.success('Disimpan');
+        setMode('view');
+        router.refresh();
+      } else {
+        toast.error(res.error);
+      }
+    });
+  }
+
+  function onCancelEdit() {
+    setEditTitle(entry.title);
+    setEditContent(entry.content);
+    setMode('view');
+  }
+
+  // === EDIT MODE ===
+  if (mode === 'edit') {
+    return (
+      <li className="rounded-md border border-brand bg-white p-3 text-sm">
+        <input
+          value={editTitle}
+          onChange={(e) => setEditTitle(e.target.value)}
+          className="mb-2 w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+        />
+        <RichTextarea value={editContent} onChange={setEditContent} rows={6} />
+        <div className="mt-2 flex justify-end gap-2">
+          <button
+            onClick={onCancelEdit}
+            disabled={pending}
+            className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-50"
+          >
+            <X className="h-3 w-3" /> Batal
+          </button>
+          <button
+            onClick={onSave}
+            disabled={pending || !editTitle.trim() || !editContent.trim()}
+            className="inline-flex items-center gap-1 rounded-md bg-brand px-2.5 py-1 text-xs font-medium text-white hover:bg-brand-dark disabled:opacity-50"
+          >
+            <Check className="h-3 w-3" /> {pending ? 'Menyimpan...' : 'Simpan'}
+          </button>
+        </div>
+      </li>
+    );
+  }
+
+  // === PREVIEW MODE (WhatsApp style) ===
+  if (mode === 'preview') {
+    return (
+      <li className="rounded-md border bg-gray-50 p-3 text-sm">
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <div className="font-medium">{entry.title}</div>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setMode('view')}
+              title="Tutup preview"
+              className="text-gray-400 hover:text-gray-700"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+        <div className="rounded-md bg-[#e5ddd5] p-3">
+          <div className="max-w-[85%] rounded-lg bg-white p-3 text-sm shadow-sm">
+            <div className="whitespace-pre-wrap break-words">
+              {renderWhatsappText(entry.content)}
+            </div>
+          </div>
+        </div>
+      </li>
+    );
+  }
+
+  // === VIEW MODE (default) ===
   return (
-    <li className="rounded-md border bg-gray-50 p-3 text-sm">
+    <li className="rounded-md border bg-gray-50 p-3 text-sm group">
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <div className="font-medium">{entry.title}</div>
-          <div className="mt-1 text-xs text-gray-600 whitespace-pre-wrap break-words">
+          <div className="mt-1 text-xs text-gray-600 whitespace-pre-wrap break-words line-clamp-4">
             {renderWhatsappText(entry.content)}
           </div>
         </div>
-        <button
-          onClick={onDelete}
-          disabled={pending}
-          className="text-gray-400 hover:text-red-600 disabled:opacity-50"
-          aria-label="Hapus"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
+        <div className="flex flex-col items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={() => setMode('preview')}
+            title="Preview WhatsApp"
+            className="rounded p-1 text-gray-500 hover:bg-white hover:text-brand"
+          >
+            <Eye className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={() => setMode('edit')}
+            title="Edit"
+            className="rounded p-1 text-gray-500 hover:bg-white hover:text-brand"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={onDelete}
+            disabled={pending}
+            title="Hapus"
+            className="rounded p-1 text-gray-400 hover:bg-white hover:text-red-600 disabled:opacity-50"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
       </div>
     </li>
   );

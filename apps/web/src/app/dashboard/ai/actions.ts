@@ -116,6 +116,31 @@ export async function importKnowledgeEntries(
   }
 }
 
+export async function updateKnowledgeEntry(
+  id: string,
+  data: { title: string; content: string },
+): Promise<ActionResult> {
+  try {
+    const { orgId } = await getActiveOrg();
+    const parsed = kbSchema.safeParse(data);
+    if (!parsed.success) {
+      return { ok: false, error: parsed.error.issues[0]?.message ?? 'Input tidak valid' };
+    }
+    const entry = await prisma.knowledgeEntry.findFirst({
+      where: { id, organizationId: orgId },
+    });
+    if (!entry) return { ok: false, error: 'Entry tidak ditemukan' };
+    await prisma.knowledgeEntry.update({
+      where: { id },
+      data: parsed.data,
+    });
+    revalidatePath('/dashboard/ai');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
 export async function deleteKnowledgeEntry(id: string): Promise<ActionResult> {
   try {
     const { orgId } = await getActiveOrg();

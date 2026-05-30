@@ -23,7 +23,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <div className="flex min-h-screen">
-      <aside className="w-64 border-r bg-white px-4 py-6">
+      <aside className="sticky top-0 flex h-screen w-64 flex-col border-r bg-white px-4 py-6">
         <Link href="/dashboard" className="flex items-center gap-2 font-bold text-lg">
           <MessageCircleReply className="h-6 w-6 text-brand" />
           Auto Balas
@@ -61,7 +61,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </NavLink>
         </nav>
 
-        <div className="absolute bottom-6 w-56">
+        {/* Spacer push profil ke bawah, tetap di posisi tanpa ikut scroll */}
+        <div className="mt-auto pt-6">
           <div className="mb-3 text-xs text-gray-500">
             <div className="truncate font-medium text-gray-700">{session.user.name}</div>
             <div className="truncate">{session.user.email}</div>
