@@ -106,6 +106,15 @@ class SessionManager {
       browser: ['Auto Balas', 'Chrome', '120.0.0'],
       syncFullHistory: false,
       markOnlineOnConnect: false,
+      // VPS kecil/koneksi lambat butuh timeout lebih panjang biar init queries
+      // tidak timeout duluan & bikin connection putus
+      defaultQueryTimeoutMs: 60_000,
+      // Heartbeat tiap 25 detik biar WA tidak anggap connection idle
+      keepAliveIntervalMs: 25_000,
+      // Retry kalau ada request gagal sementara
+      retryRequestDelayMs: 1000,
+      // Skip generate high-quality preview link (hemat bandwidth & CPU)
+      generateHighQualityLinkPreview: false,
       logger: pino({ level: 'warn' }) as never,
     });
     state.sock = sock;
