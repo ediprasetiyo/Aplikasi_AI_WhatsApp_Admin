@@ -98,13 +98,16 @@ export function KbForm() {
 export function KbList({ entries }: { entries: Array<{ id: string; title: string; content: string }> }) {
   if (entries.length === 0) {
     return (
-      <p className="text-center text-sm text-gray-400 py-4">
-        Belum ada knowledge. Tambah minimal 3-5 untuk hasil AI yang baik.
-      </p>
+      <div className="rounded-md border border-dashed bg-gray-50 px-4 py-8 text-center">
+        <p className="text-sm text-gray-500">Belum ada knowledge.</p>
+        <p className="mt-1 text-xs text-gray-400">
+          Tambah minimal 3-5 entry biar AI bisa jawab dengan baik.
+        </p>
+      </div>
     );
   }
   return (
-    <ul className="space-y-2 max-h-96 overflow-y-auto">
+    <ul className="space-y-2 max-h-[600px] overflow-y-auto pr-2 -mr-2">
       {entries.map((e) => (
         <KbItem key={e.id} entry={e} />
       ))}
