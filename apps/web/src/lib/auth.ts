@@ -6,7 +6,12 @@ import { prisma } from '@wa-admin/db';
 // Origins yang diizinkan untuk akses auth API (CSRF protection).
 // Otomatis menerima: localhost dev, URL utama, URL Vercel preview/branch, dan custom domain di env.
 function buildTrustedOrigins(): string[] {
-  const list = new Set<string>(['http://localhost:3000']);
+  const list = new Set<string>([
+    'http://localhost:3000',
+    'https://autobalas.my.id',
+    'https://www.autobalas.my.id',
+    'https://admin.autobalas.my.id',
+  ]);
   if (process.env.BETTER_AUTH_URL) list.add(process.env.BETTER_AUTH_URL);
   if (process.env.NEXT_PUBLIC_APP_URL) list.add(process.env.NEXT_PUBLIC_APP_URL);
   if (process.env.VERCEL_URL) list.add(`https://${process.env.VERCEL_URL}`);
@@ -45,6 +50,17 @@ export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL ?? 'http://localhost:3000',
   trustedOrigins: buildTrustedOrigins(),
   secret: process.env.BETTER_AUTH_SECRET!,
+  // Cookie shared antar subdomain (autobalas.my.id, admin.autobalas.my.id, www.x)
+  advanced: {
+    crossSubDomainCookies: {
+      enabled: true,
+      domain: process.env.NODE_ENV === 'production' ? '.autobalas.my.id' : undefined,
+    },
+    defaultCookieAttributes: {
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+    },
+  },
 });
 
 export type Session = typeof auth.$Infer.Session;
