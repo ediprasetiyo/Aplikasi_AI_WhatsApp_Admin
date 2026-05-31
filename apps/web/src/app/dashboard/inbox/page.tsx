@@ -1,13 +1,12 @@
 import Link from 'next/link';
-import { formatDistanceToNow } from 'date-fns';
-import { id as idLocale } from 'date-fns/locale';
-import { Clock, CheckCheck, Inbox as InboxIcon } from 'lucide-react';
+import { Inbox as InboxIcon } from 'lucide-react';
 import { requireActiveOrgId } from '@/lib/session';
 import { prisma } from '@wa-admin/db';
 import { SimulateButton } from './simulate-button';
 import { AutoRefresh } from './auto-refresh';
+import { InboxList } from './inbox-list';
 
-type Filter = 'all' | 'pending' | 'answered';
+type Filter = 'all' | 'pending' | 'answered' | 'banned';
 
 export default async function InboxPage({
   searchParams,
@@ -17,7 +16,9 @@ export default async function InboxPage({
   const orgId = await requireActiveOrgId();
   const { filter = 'all' } = await searchParams;
   const activeFilter: Filter =
-    filter === 'pending' || filter === 'answered' ? filter : 'all';
+    filter === 'pending' || filter === 'answered' || filter === 'banned'
+      ? filter
+      : 'all';
 
   const conversations = await prisma.conversation.findMany({
     where: { organizationId: orgId },
@@ -27,26 +28,32 @@ export default async function InboxPage({
       messages: {
         orderBy: { createdAt: 'desc' },
         take: 1,
+        select: { direction: true, body: true, type: true },
       },
       _count: { select: { messages: true } },
     },
   });
 
-  // Tentukan status setiap conversation berdasarkan arah pesan terakhir
   const withStatus = conversations.map((c) => ({
     ...c,
-    isPending: c.messages[0]?.direction === 'inbound',
+    isPending:
+      c.messages[0]?.direction === 'inbound' && c.customerStatus !== 'banned',
   }));
 
   const filtered =
     activeFilter === 'pending'
-      ? withStatus.filter((c) => c.isPending)
+      ? withStatus.filter((c) => c.isPending && c.customerStatus !== 'banned')
       : activeFilter === 'answered'
-        ? withStatus.filter((c) => !c.isPending)
-        : withStatus;
+        ? withStatus.filter((c) => !c.isPending && c.customerStatus !== 'banned')
+        : activeFilter === 'banned'
+          ? withStatus.filter((c) => c.customerStatus === 'banned')
+          : withStatus;
 
   const pendingCount = withStatus.filter((c) => c.isPending).length;
-  const answeredCount = withStatus.length - pendingCount;
+  const answeredCount = withStatus.filter(
+    (c) => !c.isPending && c.customerStatus !== 'banned',
+  ).length;
+  const bannedCount = withStatus.filter((c) => c.customerStatus === 'banned').length;
 
   return (
     <div className="p-6 md:p-8 max-w-6xl">
@@ -63,19 +70,20 @@ export default async function InboxPage({
             )}
           </h1>
           <p className="mt-2 text-gray-600">
-            Semua percakapan customer di satu tempat.
+            Semua percakapan customer di satu tempat. Centang untuk pilih & tandai
+            sudah dibaca.
           </p>
         </div>
         <SimulateButton />
       </div>
 
       {/* Filter tabs */}
-      <div className="mt-6 flex gap-2 border-b">
+      <div className="mt-6 flex gap-2 border-b overflow-x-auto">
         <FilterTab
           href="/dashboard/inbox"
           active={activeFilter === 'all'}
           label="Semua"
-          count={withStatus.length}
+          count={withStatus.length - bannedCount}
         />
         <FilterTab
           href="/dashboard/inbox?filter=pending"
@@ -91,6 +99,15 @@ export default async function InboxPage({
           count={answeredCount}
           color="green"
         />
+        {bannedCount > 0 && (
+          <FilterTab
+            href="/dashboard/inbox?filter=banned"
+            active={activeFilter === 'banned'}
+            label="Banned (Spam)"
+            count={bannedCount}
+            color="gray"
+          />
+        )}
       </div>
 
       {filtered.length === 0 ? (
@@ -100,7 +117,9 @@ export default async function InboxPage({
               ? 'Tidak ada pesan yang belum dijawab. 🎉'
               : activeFilter === 'answered'
                 ? 'Belum ada percakapan yang sudah dijawab.'
-                : 'Belum ada percakapan.'}
+                : activeFilter === 'banned'
+                  ? 'Tidak ada customer banned. 👍'
+                  : 'Belum ada percakapan.'}
           </p>
           {activeFilter === 'all' && (
             <p className="mt-2 text-sm text-gray-500">
@@ -109,58 +128,7 @@ export default async function InboxPage({
           )}
         </div>
       ) : (
-        <ul className="mt-4 divide-y rounded-lg border bg-white">
-          {filtered.map((c) => {
-            const last = c.messages[0];
-            return (
-              <li key={c.id}>
-                <Link
-                  href={`/dashboard/inbox/${c.id}`}
-                  className={`flex items-start justify-between gap-4 px-5 py-4 hover:bg-gray-50 ${
-                    c.isPending ? 'bg-red-50/30 border-l-4 border-l-red-400' : ''
-                  }`}
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`font-medium ${c.isPending ? 'text-gray-900' : ''}`}>
-                        {c.customerName ?? c.customerPhone}
-                      </span>
-                      <span className="text-xs font-normal text-gray-500">
-                        · {c.customerPhone}
-                      </span>
-                      {c.isPending ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
-                          <Clock className="h-3 w-3" />
-                          Belum dijawab
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
-                          <CheckCheck className="h-3 w-3" />
-                          Selesai
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-1 truncate text-sm text-gray-600">
-                      {last?.direction === 'outbound' && (
-                        <span className="text-gray-400">Anda: </span>
-                      )}
-                      {last?.body ?? `[${last?.type ?? 'tidak ada pesan'}]`}
-                    </div>
-                  </div>
-                  <div className="text-right text-xs text-gray-500 flex-shrink-0">
-                    <div>
-                      {formatDistanceToNow(c.lastMessageAt, {
-                        addSuffix: true,
-                        locale: idLocale,
-                      })}
-                    </div>
-                    <div className="mt-1">{c._count.messages} pesan</div>
-                  </div>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+        <InboxList conversations={filtered} />
       )}
     </div>
   );
@@ -177,20 +145,31 @@ function FilterTab({
   active: boolean;
   label: string;
   count: number;
-  color?: 'red' | 'green';
+  color?: 'red' | 'green' | 'gray';
 }) {
-  const countColor = color === 'red' ? 'bg-red-100 text-red-700' : color === 'green' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600';
+  const countColor =
+    color === 'red'
+      ? 'bg-red-100 text-red-700'
+      : color === 'green'
+        ? 'bg-green-100 text-green-700'
+        : color === 'gray'
+          ? 'bg-gray-200 text-gray-700'
+          : 'bg-gray-100 text-gray-600';
   return (
     <Link
       href={href}
-      className={`relative inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition ${
+      className={`relative inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition whitespace-nowrap ${
         active
           ? 'border-brand text-brand'
           : 'border-transparent text-gray-600 hover:text-gray-900'
       }`}
     >
       {label}
-      <span className={`rounded-full px-2 py-0.5 text-xs ${active ? 'bg-brand/10 text-brand' : countColor}`}>
+      <span
+        className={`rounded-full px-2 py-0.5 text-xs ${
+          active ? 'bg-brand/10 text-brand' : countColor
+        }`}
+      >
         {count}
       </span>
     </Link>

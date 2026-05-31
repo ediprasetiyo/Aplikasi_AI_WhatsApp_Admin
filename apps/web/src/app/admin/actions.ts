@@ -6,6 +6,26 @@ import { requireSuperAdmin } from '@/lib/session';
 
 type ActionResult = { ok: true } | { ok: false; error: string };
 
+export async function adminUpdateWorkspaceName(
+  organizationId: string,
+  name: string,
+): Promise<ActionResult> {
+  await requireSuperAdmin();
+  try {
+    const trimmed = name.trim();
+    if (trimmed.length < 2) return { ok: false, error: 'Nama terlalu pendek' };
+    await prisma.organization.update({
+      where: { id: organizationId },
+      data: { name: trimmed },
+    });
+    revalidatePath('/admin/workspaces');
+    revalidatePath(`/admin/workspaces/${organizationId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
 export async function deleteWorkspace(organizationId: string): Promise<ActionResult> {
   await requireSuperAdmin();
   try {

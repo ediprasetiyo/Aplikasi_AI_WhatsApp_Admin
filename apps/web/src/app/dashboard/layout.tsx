@@ -22,6 +22,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
     memberships.find((m) => m.organizationId === activeOrgId) ?? memberships[0]!;
 
   const showAdmin = await isSuperAdmin();
+  // Role user di workspace aktif — member punya akses terbatas
+  const role = activeMembership.role;
+  const isOwnerOrAdmin = role === 'owner' || role === 'admin';
 
   // Hitung conversation yang last message-nya inbound (= belum dijawab)
   const conversations = await prisma.conversation.findMany({
@@ -60,21 +63,26 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <NavLink href="/dashboard/inbox" icon={Inbox} badge={pendingCount}>
             Inbox
           </NavLink>
-          <NavLink href="/dashboard/ai" icon={Sparkles}>
-            AI
-          </NavLink>
           <NavLink href="/dashboard/whatsapp" icon={Phone}>
             WhatsApp
           </NavLink>
-          <NavLink href="/dashboard/team" icon={Users}>
-            Tim
-          </NavLink>
-          <NavLink href="/dashboard/billing" icon={CreditCard}>
-            Berlangganan
-          </NavLink>
-          <NavLink href="/dashboard/settings" icon={Settings}>
-            Setting
-          </NavLink>
+          {/* Menu khusus owner/admin */}
+          {isOwnerOrAdmin && (
+            <>
+              <NavLink href="/dashboard/ai" icon={Sparkles}>
+                AI
+              </NavLink>
+              <NavLink href="/dashboard/team" icon={Users}>
+                Tim
+              </NavLink>
+              <NavLink href="/dashboard/billing" icon={CreditCard}>
+                Berlangganan
+              </NavLink>
+              <NavLink href="/dashboard/settings" icon={Settings}>
+                Setting
+              </NavLink>
+            </>
+          )}
           {/* Super Admin link tidak ditampilkan — pemilik akses via admin.autobalas.my.id */}
         </nav>
 
