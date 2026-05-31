@@ -1,7 +1,7 @@
 import Link from 'next/link';
-import { Shield, Building2, CreditCard, ArrowLeft, LayoutDashboard } from 'lucide-react';
+import { Shield, Building2, CreditCard, LayoutDashboard, LogOut } from 'lucide-react';
 import { requireSuperAdmin } from '@/lib/session';
-import { SignOutButton } from '../dashboard/_components/sign-out-button';
+import { AdminSignOut } from './_components/admin-signout';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await requireSuperAdmin();
@@ -25,18 +25,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <AdminLink href="/admin/subscriptions" icon={CreditCard}>
             Subscriptions
           </AdminLink>
-          <div className="my-3 border-t border-gray-700" />
-          <a
-            href={
-              process.env.NODE_ENV === 'production'
-                ? 'https://autobalas.my.id/dashboard'
-                : '/dashboard'
-            }
-            className="flex items-center gap-3 rounded-md px-3 py-2 text-gray-300 hover:bg-gray-800 hover:text-white"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Aplikasi User
-          </a>
         </nav>
 
         <div className="mt-auto pt-6">
@@ -44,7 +32,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <div className="truncate font-medium text-gray-200">{session.user.name}</div>
             <div className="truncate">{session.user.email}</div>
           </div>
-          <SignOutButton />
+          <AdminSignOut />
         </div>
       </aside>
       <main className="flex-1 bg-gray-50">{children}</main>

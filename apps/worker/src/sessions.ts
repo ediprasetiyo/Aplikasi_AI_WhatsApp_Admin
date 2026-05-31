@@ -311,6 +311,30 @@ class SessionManager {
         const pushName = msg.pushName ?? null;
 
         try {
+          // Cek existing convo untuk spam detection
+          const existingConvo = await prisma.conversation.findUnique({
+            where: {
+              whatsappAccountId_customerPhone: {
+                whatsappAccountId: accountId,
+                customerPhone,
+              },
+            },
+          });
+
+          // Hitung repeat count: kalau body sama dengan lastInboundText → +1
+          const isSameAsPrev =
+            existingConvo?.lastInboundText && body && existingConvo.lastInboundText === body;
+          const newRepeatCount = isSameAsPrev ? (existingConvo?.repeatCount ?? 0) + 1 : 1;
+
+          // Ambil threshold dari AI setting org
+          const aiSetting = await prisma.aiSetting.findUnique({
+            where: { organizationId: state.organizationId },
+            select: { spamThreshold: true },
+          });
+          const threshold = aiSetting?.spamThreshold ?? 10;
+          const shouldBan =
+            (existingConvo?.customerStatus ?? 'active') === 'active' && newRepeatCount >= threshold;
+
           const convo = await prisma.conversation.upsert({
             where: {
               whatsappAccountId_customerPhone: {
@@ -325,13 +349,26 @@ class SessionManager {
               customerJid,
               customerName: pushName,
               lastMessageAt: new Date(),
+              lastInboundText: body,
+              repeatCount: 1,
             },
             update: {
-              customerJid, // update JID kalau berubah (rare tapi possible)
+              customerJid,
               customerName: pushName ?? undefined,
               lastMessageAt: new Date(),
+              lastInboundText: body,
+              repeatCount: newRepeatCount,
+              customerStatus: shouldBan ? 'banned' : undefined,
             },
           });
+
+          // Kalau customer sudah banned, JANGAN trigger AI reply
+          if (existingConvo?.customerStatus === 'banned' || shouldBan) {
+            if (shouldBan) {
+              log.warn({ customerPhone, repeatCount: newRepeatCount }, 'customer banned for spam');
+            }
+            continue;
+          }
 
           await prisma.message.create({
             data: {
@@ -344,10 +381,12 @@ class SessionManager {
             },
           });
 
-          log.info({ accountId, from: customerPhone, body: body?.slice(0, 80) }, 'inbound');
+          log.info(
+            { accountId, from: customerPhone, body: body?.slice(0, 80), repeat: newRepeatCount },
+            'inbound',
+          );
 
-          // TODO: trigger AI auto-reply via webhook ke web
-          // POST {WEB_URL}/api/internal/ai-reply { conversationId }
+          // Trigger AI auto-reply (kalau diaktifkan & customer tidak banned)
           await triggerAiReply(convo.id);
         } catch (e) {
           const err = e as { code?: string };

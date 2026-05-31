@@ -23,6 +23,17 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   const showAdmin = await isSuperAdmin();
 
+  // Hitung conversation yang last message-nya inbound (= belum dijawab)
+  const conversations = await prisma.conversation.findMany({
+    where: { organizationId: activeOrgId },
+    select: {
+      messages: { orderBy: { createdAt: 'desc' }, take: 1, select: { direction: true } },
+    },
+  });
+  const pendingCount = conversations.filter(
+    (c) => c.messages[0]?.direction === 'inbound',
+  ).length;
+
   return (
     <div className="flex min-h-screen">
       <aside className="sticky top-0 flex h-screen w-64 flex-col border-r bg-white px-4 py-6">
@@ -46,7 +57,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <NavLink href="/dashboard" icon={LayoutDashboard}>
             Dashboard
           </NavLink>
-          <NavLink href="/dashboard/inbox" icon={Inbox}>
+          <NavLink href="/dashboard/inbox" icon={Inbox} badge={pendingCount}>
             Inbox
           </NavLink>
           <NavLink href="/dashboard/ai" icon={Sparkles}>
@@ -64,22 +75,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <NavLink href="/dashboard/settings" icon={Settings}>
             Setting
           </NavLink>
-          {showAdmin && (
-            <>
-              <div className="my-3 border-t border-gray-200" />
-              <a
-                href={
-                  process.env.NODE_ENV === 'production'
-                    ? 'https://admin.autobalas.my.id'
-                    : '/admin'
-                }
-                className="flex items-center gap-3 rounded-md px-3 py-2 text-red-600 hover:bg-red-50 text-sm"
-              >
-                <Shield className="h-4 w-4" />
-                Super Admin
-              </a>
-            </>
-          )}
+          {/* Super Admin link tidak ditampilkan — pemilik akses via admin.autobalas.my.id */}
         </nav>
 
         {/* Spacer push profil ke bawah, tetap di posisi tanpa ikut scroll */}
@@ -99,10 +95,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
 function NavLink({
   href,
   icon: Icon,
+  badge,
   children,
 }: {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
+  badge?: number;
   children: React.ReactNode;
 }) {
   return (
@@ -111,7 +109,12 @@ function NavLink({
       className="flex items-center gap-3 rounded-md px-3 py-2 text-gray-700 hover:bg-gray-100"
     >
       <Icon className="h-4 w-4" />
-      {children}
+      <span className="flex-1">{children}</span>
+      {badge !== undefined && badge > 0 && (
+        <span className="rounded-full bg-red-500 px-2 py-0.5 text-xs font-semibold text-white">
+          {badge > 99 ? '99+' : badge}
+        </span>
+      )}
     </Link>
   );
 }

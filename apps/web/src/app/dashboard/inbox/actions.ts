@@ -189,6 +189,54 @@ export async function simulateInbound(input: {
   }
 }
 
+/** Mark conversation(s) sebagai sudah dibaca/dihandle — geser dari "Belum Dijawab" ke "Selesai" */
+export async function markConversationsRead(ids: string[]): Promise<ActionResult<{ count: number }>> {
+  try {
+    const orgId = await getOrg();
+    const result = await prisma.conversation.updateMany({
+      where: { id: { in: ids }, organizationId: orgId },
+      data: { markedReadAt: new Date() },
+    });
+    revalidatePath('/dashboard/inbox');
+    return { ok: true, data: { count: result.count } };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
+/** Ban customer — chat berikutnya tidak akan diproses AI */
+export async function banCustomer(conversationId: string): Promise<ActionResult> {
+  try {
+    const orgId = await getOrg();
+    const convo = await prisma.conversation.findFirst({
+      where: { id: conversationId, organizationId: orgId },
+    });
+    if (!convo) return { ok: false, error: 'Conversation tidak ditemukan' };
+    await prisma.conversation.update({
+      where: { id: conversationId },
+      data: { customerStatus: 'banned' },
+    });
+    revalidatePath('/dashboard/inbox');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
+export async function unbanCustomer(conversationId: string): Promise<ActionResult> {
+  try {
+    const orgId = await getOrg();
+    await prisma.conversation.updateMany({
+      where: { id: conversationId, organizationId: orgId },
+      data: { customerStatus: 'active', repeatCount: 0 },
+    });
+    revalidatePath('/dashboard/inbox');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
 /** Trigger AI reply manual untuk conversation existing (tombol "Jawab dengan AI") */
 export async function triggerAiReply(conversationId: string): Promise<ActionResult<{ reply: string }>> {
   try {

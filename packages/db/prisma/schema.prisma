@@ -235,6 +235,13 @@ model Conversation {
   customerName      String?
   // last activity untuk sorting inbox
   lastMessageAt     DateTime @default(now())
+  // mark sebagai sudah dibaca / di-handle manual (tidak butuh balasan)
+  markedReadAt      DateTime?
+  // status: aktif | banned (di-block karena spam, tidak diproses AI)
+  customerStatus    String   @default("active")
+  // counter untuk spam detection — last text + repeat count
+  lastInboundText   String?
+  repeatCount       Int      @default(0)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -299,6 +306,12 @@ model AiSetting {
   model          String   @default("llama-3.3-70b-versatile")
   // delay sebelum reply (detik) — biar tidak terlihat robotik
   replyDelayMs   Int      @default(1500)
+  // spam threshold — kalau customer kirim text sama N kali berturut, banned
+  spamThreshold  Int      @default(10)
+  // notifikasi inbox baru — warna badge (red | yellow | blue | green)
+  notifColor     String   @default("red")
+  // play sound saat pesan baru
+  notifSound     Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

@@ -21,6 +21,9 @@ const settingSchema = z.object({
   systemPrompt: z.string().trim().min(10, 'System prompt terlalu pendek'),
   model: z.string().trim().min(3),
   replyDelayMs: z.coerce.number().int().min(0).max(60000),
+  spamThreshold: z.coerce.number().int().min(3).max(50).optional(),
+  notifColor: z.enum(['red', 'yellow', 'blue', 'green']).optional(),
+  notifSound: z.boolean().optional(),
 });
 
 export async function saveAiSetting(input: {
@@ -28,6 +31,9 @@ export async function saveAiSetting(input: {
   systemPrompt: string;
   model: string;
   replyDelayMs: number;
+  spamThreshold?: number;
+  notifColor?: 'red' | 'yellow' | 'blue' | 'green';
+  notifSound?: boolean;
 }): Promise<ActionResult> {
   try {
     const { orgId } = await getActiveOrg();
