@@ -6,12 +6,20 @@ import { toast } from 'sonner';
 import type { PlanKey } from '@/lib/plans';
 import { submitSubscription } from '../../actions';
 
-export function CheckoutForm({ planKey }: { planKey: PlanKey }) {
+export function CheckoutForm({
+  planKey,
+  intent,
+  defaults,
+}: {
+  planKey: PlanKey;
+  intent: 'new' | 'renewal' | 'upgrade';
+  defaults?: { ktpName: string; ktpNumber: string; phoneNumber: string };
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [ktpName, setKtpName] = useState('');
-  const [ktpNumber, setKtpNumber] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [ktpName, setKtpName] = useState(defaults?.ktpName ?? '');
+  const [ktpNumber, setKtpNumber] = useState(defaults?.ktpNumber ?? '');
+  const [phoneNumber, setPhoneNumber] = useState(defaults?.phoneNumber ?? '');
   const [paymentMethod, setPaymentMethod] = useState<'bca' | 'dana'>('bca');
 
   function onSubmit(e: React.FormEvent) {
@@ -19,6 +27,7 @@ export function CheckoutForm({ planKey }: { planKey: PlanKey }) {
     startTransition(async () => {
       const res = await submitSubscription({
         plan: planKey,
+        intent,
         ktpName,
         ktpNumber,
         phoneNumber: phoneNumber.replace(/\D/g, ''),
@@ -38,10 +47,11 @@ export function CheckoutForm({ planKey }: { planKey: PlanKey }) {
       onSubmit={onSubmit}
       className="mt-6 space-y-4 rounded-lg border bg-white p-6 shadow-sm"
     >
-      <h2 className="font-semibold">Data Diri (sesuai KTP)</h2>
+      <h2 className="font-semibold">Data Diri</h2>
       <p className="text-xs text-gray-500">
-        Wajib sesuai KTP — untuk verifikasi pemilik akun. Data Anda aman & tidak
-        akan disebarluaskan.
+        {defaults?.ktpName
+          ? 'Data dari pembayaran sebelumnya — bisa diedit kalau berubah.'
+          : 'Wajib sesuai KTP — untuk verifikasi pemilik akun.'}
       </p>
 
       <div>
@@ -87,9 +97,6 @@ export function CheckoutForm({ planKey }: { planKey: PlanKey }) {
             placeholder="08123456789"
             className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
           />
-          <span className="mt-1 block text-xs text-gray-500">
-            Untuk konfirmasi pembayaran & support
-          </span>
         </label>
       </div>
 
@@ -112,7 +119,6 @@ export function CheckoutForm({ planKey }: { planKey: PlanKey }) {
               />
               <div>
                 <div className="text-sm font-semibold">Transfer BCA</div>
-                <div className="text-xs text-gray-500">Verified instant</div>
               </div>
             </label>
             <label
@@ -130,7 +136,6 @@ export function CheckoutForm({ planKey }: { planKey: PlanKey }) {
               />
               <div>
                 <div className="text-sm font-semibold">DANA</div>
-                <div className="text-xs text-gray-500">E-wallet</div>
               </div>
             </label>
           </div>

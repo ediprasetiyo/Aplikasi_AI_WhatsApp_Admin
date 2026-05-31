@@ -128,6 +128,11 @@ model Subscription {
   paymentSubmittedAt DateTime?
   paymentApprovedAt  DateTime?
   paymentApprovedBy  String?
+  // Tipe pembayaran terakhir: "new" | "renewal" | "upgrade"
+  // Mempengaruhi cara approve di admin (extend periode vs ganti plan)
+  paymentIntent  String?   @default("new")
+  // Untuk upgrade: plan tujuan disimpan di paymentIntentPlan, baru di-apply saat approve
+  paymentIntentPlan String?
 
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt

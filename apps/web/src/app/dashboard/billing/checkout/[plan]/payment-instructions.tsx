@@ -1,12 +1,12 @@
 'use client';
 
-import { useTransition } from 'react';
+import { useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Copy, CheckCircle2, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import type { PlanKey } from '@/lib/plans';
 import { PAYMENT_INFO } from '@/lib/payment-info';
-import { cancelPendingSubscription } from '../../actions';
+import { cancelPendingSubscription, pollSubscriptionStatus } from '../../actions';
 
 export function PaymentInstructions({
   plan,
@@ -22,6 +22,30 @@ export function PaymentInstructions({
   const router = useRouter();
   const [cancelPending, startCancel] = useTransition();
   const info = method === 'dana' ? PAYMENT_INFO.dana : PAYMENT_INFO.bca;
+
+  // Polling status setiap 5 detik. Kalau admin sudah approve → status jadi "active"
+  // → redirect otomatis ke dashboard dengan toast sukses.
+  useEffect(() => {
+    let active = true;
+    const interval = setInterval(async () => {
+      if (!active) return;
+      if (document.visibilityState !== 'visible') return;
+      const res = await pollSubscriptionStatus();
+      if (res.ok && res.data?.status === 'active') {
+        toast.success('🎉 Pembayaran disetujui! Anda dialihkan ke dashboard...');
+        active = false;
+        clearInterval(interval);
+        setTimeout(() => {
+          router.push('/dashboard');
+          router.refresh();
+        }, 1500);
+      }
+    }, 5000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [router]);
 
   function copy(text: string, label: string) {
     navigator.clipboard.writeText(text);

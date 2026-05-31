@@ -1,10 +1,16 @@
 import Link from 'next/link';
-import { Shield, Building2, CreditCard, LayoutDashboard, LogOut } from 'lucide-react';
+import { Shield, Building2, CreditCard, LayoutDashboard, CheckSquare } from 'lucide-react';
+import { prisma } from '@wa-admin/db';
 import { requireSuperAdmin } from '@/lib/session';
 import { AdminSignOut } from './_components/admin-signout';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await requireSuperAdmin();
+
+  // Badge count pembayaran pending — biar admin tahu ada yg harus diproses
+  const pendingCount = await prisma.subscription
+    .count({ where: { status: 'pending_payment' } })
+    .catch(() => 0);
 
   return (
     <div className="flex min-h-screen">
@@ -19,11 +25,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <AdminLink href="/admin" icon={LayoutDashboard}>
             Dashboard
           </AdminLink>
+          <AdminLink href="/admin/approval" icon={CheckSquare} badge={pendingCount}>
+            Approval
+          </AdminLink>
           <AdminLink href="/admin/workspaces" icon={Building2}>
             Workspaces
           </AdminLink>
           <AdminLink href="/admin/subscriptions" icon={CreditCard}>
-            Subscriptions
+            Semua Subscriptions
           </AdminLink>
         </nav>
 
@@ -43,10 +52,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 function AdminLink({
   href,
   icon: Icon,
+  badge,
   children,
 }: {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
+  badge?: number;
   children: React.ReactNode;
 }) {
   return (
@@ -55,7 +66,12 @@ function AdminLink({
       className="flex items-center gap-3 rounded-md px-3 py-2 text-gray-300 hover:bg-gray-800 hover:text-white"
     >
       <Icon className="h-4 w-4" />
-      {children}
+      <span className="flex-1">{children}</span>
+      {badge !== undefined && badge > 0 && (
+        <span className="rounded-full bg-red-500 px-2 py-0.5 text-xs font-semibold text-white">
+          {badge > 99 ? '99+' : badge}
+        </span>
+      )}
     </Link>
   );
 }
