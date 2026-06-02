@@ -41,6 +41,25 @@ export async function generateAndSendReply(conversationId: string): Promise<{
   });
   const history = recent.reverse();
 
+  // Guard: kalau pesan terakhir sudah dari admin/AI (outbound), jangan trigger AI lagi.
+  // Groq akan return kosong karena tidak ada pertanyaan baru.
+  const lastMsg = history[history.length - 1];
+  if (lastMsg && lastMsg.direction === 'outbound') {
+    return {
+      replyText: '',
+      sent: false,
+      error: 'Pesan terakhir sudah dari admin/AI. Tunggu customer balas dulu, atau ketik manual.',
+    };
+  }
+  // Guard: thread kosong total
+  if (history.length === 0) {
+    return {
+      replyText: '',
+      sent: false,
+      error: 'Belum ada pesan untuk dibalas.',
+    };
+  }
+
   // Build system prompt + knowledge base
   const kbBlock =
     convo.organization.knowledgeEntries.length > 0
@@ -75,9 +94,20 @@ ATURAN MENULIS BALASAN:
     })),
   ];
 
-  const replyText = await chat({ model: ai.model, messages });
+  let replyText = '';
+  try {
+    replyText = await chat({ model: ai.model, messages });
+  } catch (e) {
+    const msg = (e as Error).message ?? 'AI error';
+    return { replyText: '', sent: false, error: `Groq error: ${msg}` };
+  }
   if (!replyText) {
-    return { replyText: '', sent: false, error: 'AI mengembalikan respons kosong' };
+    return {
+      replyText: '',
+      sent: false,
+      error:
+        'AI tidak menghasilkan balasan (kemungkinan model deprecated atau prompt buntu). Cek model di Pengaturan AI.',
+    };
   }
 
   // Simpan ke DB dulu

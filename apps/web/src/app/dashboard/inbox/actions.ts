@@ -237,6 +237,81 @@ export async function unbanCustomer(conversationId: string): Promise<ActionResul
   }
 }
 
+/**
+ * Kirim ulang pesan outbound yang status-nya `failed` / `pending`.
+ * Gunakan body pesan existing — JANGAN bikin pesan baru, supaya history bersih.
+ */
+export async function resendFailedMessage(messageId: string): Promise<ActionResult> {
+  try {
+    const orgId = await getOrg();
+    const msg = await prisma.message.findFirst({
+      where: { id: messageId },
+      include: {
+        conversation: {
+          include: { whatsappAccount: true },
+        },
+      },
+    });
+    if (!msg) return { ok: false, error: 'Pesan tidak ditemukan' };
+    if (msg.conversation.organizationId !== orgId) {
+      return { ok: false, error: 'Tidak punya akses' };
+    }
+    if (msg.direction !== 'outbound') {
+      return { ok: false, error: 'Hanya pesan outbound yang bisa di-resend' };
+    }
+    if (msg.status === 'sent' || msg.status === 'delivered' || msg.status === 'read') {
+      return { ok: false, error: 'Pesan sudah terkirim, tidak perlu di-resend' };
+    }
+    if (!msg.body) {
+      return { ok: false, error: 'Pesan kosong, tidak bisa di-resend' };
+    }
+
+    const acc = msg.conversation.whatsappAccount;
+    if (!acc || acc.status !== 'active') {
+      return { ok: false, error: 'WhatsApp tidak aktif. Hubungkan dulu di menu WhatsApp.' };
+    }
+
+    // Mark sebagai "sending" supaya UI bisa kasih loading state
+    await prisma.message.update({
+      where: { id: msg.id },
+      data: { status: 'pending' },
+    });
+
+    try {
+      let wamid: string | null = null;
+      if (acc.provider === 'baileys') {
+        const targetJid =
+          msg.conversation.customerJid ?? `${msg.conversation.customerPhone}@s.whatsapp.net`;
+        const res = await worker.send(acc.id, targetJid, msg.body);
+        wamid = res.messageId;
+      } else {
+        const res = await sendTextMessage({
+          phoneNumberId: acc.phoneNumberId,
+          accessToken: acc.accessToken,
+          to: msg.conversation.customerPhone,
+          text: msg.body,
+        });
+        wamid = res.messages[0]?.id ?? null;
+      }
+      await prisma.message.update({
+        where: { id: msg.id },
+        data: { status: 'sent', waMessageId: wamid ?? undefined },
+      });
+      revalidatePath(`/dashboard/inbox/${msg.conversationId}`);
+      revalidatePath('/dashboard/inbox');
+      return { ok: true };
+    } catch (e) {
+      await prisma.message.update({
+        where: { id: msg.id },
+        data: { status: 'failed' },
+      });
+      return { ok: false, error: `Gagal kirim: ${(e as Error).message}` };
+    }
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
 /** Trigger AI reply manual untuk conversation existing (tombol "Jawab dengan AI") */
 export async function triggerAiReply(conversationId: string): Promise<ActionResult<{ reply: string }>> {
   try {

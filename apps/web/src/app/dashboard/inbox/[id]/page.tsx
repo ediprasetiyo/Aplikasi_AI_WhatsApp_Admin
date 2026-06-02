@@ -5,6 +5,7 @@ import { ArrowLeft } from 'lucide-react';
 import { requireActiveOrgId } from '@/lib/session';
 import { prisma } from '@wa-admin/db';
 import { ReplyBox } from './reply-box';
+import { MessageStatus } from './message-status';
 import { AutoRefresh } from '../auto-refresh';
 import { renderWhatsappText } from '@/lib/wa-format';
 
@@ -61,6 +62,7 @@ export default async function ConversationPage({
         )}
         {convo.messages.map((m) => {
           const outbound = m.direction === 'outbound';
+          const isFailed = outbound && m.status === 'failed';
           return (
             <div
               key={m.id}
@@ -69,7 +71,9 @@ export default async function ConversationPage({
               <div
                 className={`max-w-[70%] rounded-lg px-4 py-2 text-sm ${
                   outbound
-                    ? 'bg-brand text-white'
+                    ? isFailed
+                      ? 'bg-red-600 text-white border-2 border-red-700'
+                      : 'bg-brand text-white'
                     : 'bg-white text-gray-900 border'
                 }`}
               >
@@ -77,12 +81,21 @@ export default async function ConversationPage({
                   {m.body ? renderWhatsappText(m.body) : `[${m.type}]`}
                 </div>
                 <div
-                  className={`mt-1 text-[10px] ${
+                  className={`mt-1 flex items-center gap-1.5 text-[10px] ${
                     outbound ? 'text-white/70' : 'text-gray-400'
                   }`}
                 >
-                  {format(m.createdAt, 'HH:mm dd MMM')}
-                  {outbound && m.status && ` · ${m.status}`}
+                  <span>{format(m.createdAt, 'HH:mm dd MMM')}</span>
+                  {outbound && (
+                    <>
+                      <span>·</span>
+                      <MessageStatus
+                        messageId={m.id}
+                        status={m.status}
+                        inverted={true}
+                      />
+                    </>
+                  )}
                 </div>
               </div>
             </div>
