@@ -9,7 +9,7 @@ import {
   ArrowDown,
   ArrowUp,
 } from 'lucide-react';
-import { prisma } from '@wa-admin/db';
+import { prisma, Prisma } from '@wa-admin/db';
 import { requireSuperAdmin } from '@/lib/session';
 
 const PAGE_SIZE = 100;
@@ -42,7 +42,7 @@ export default async function AdminLogsPage({
   const orgFilter = sp.org?.trim() || '';
   const qFilter = sp.q?.trim() || '';
 
-  const where: Parameters<typeof prisma.message.findMany>[0]['where'] = {};
+  const where: Prisma.MessageWhereInput = {};
   if (statusFilter) where.status = statusFilter;
   if (directionFilter) where.direction = directionFilter;
   if (orgFilter) where.conversation = { organizationId: orgFilter };
