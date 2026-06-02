@@ -29,8 +29,9 @@ export default async function BillingPage({
   const orgId = await requireActiveOrgId();
   const { reason } = await searchParams;
   const sub = await getSubscriptionInfo(orgId);
+  // Pakai billingOrgId — subscription disimpan di primary workspace
   const fullSub = await prisma.subscription.findUnique({
-    where: { organizationId: orgId },
+    where: { organizationId: sub.billingOrgId },
   });
 
   const isActive = sub.status === 'active';

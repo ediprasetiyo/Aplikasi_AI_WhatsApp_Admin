@@ -11,21 +11,49 @@ export type SubscriptionInfo = {
   isActive: boolean;
   /** TRUE kalau tidak punya akses (expired/trial habis & belum bayar). Pakai untuk lock UI */
   isLocked: boolean;
+  /** ID workspace tempat subscription disimpan (primary org milik billing owner) */
+  billingOrgId: string;
 };
 
 /**
- * Get/create subscription info untuk org tertentu.
- * Otomatis bikin trial 14 hari kalau belum ada record.
+ * Cari "billing owner" untuk org tertentu = user yang punya role 'owner' di org tsb.
+ * Kemudian return organizationId paling tua milik owner tsb (= primary workspace).
+ * Subscription disimpan di primary workspace ini; semua workspace lain milik owner sama
+ * ikut paket & expired-nya.
+ */
+export async function resolveBillingOrgId(organizationId: string): Promise<string> {
+  // Cari owner pertama dari org ini
+  const owner = await prisma.member.findFirst({
+    where: { organizationId, role: 'owner' },
+    orderBy: { createdAt: 'asc' },
+    select: { userId: true },
+  });
+  if (!owner) return organizationId; // fallback (org tanpa owner — edge case)
+
+  // Cari org paling tua milik owner ini → itu primary workspace
+  const primary = await prisma.member.findFirst({
+    where: { userId: owner.userId, role: 'owner' },
+    orderBy: { createdAt: 'asc' },
+    select: { organizationId: true },
+  });
+  return primary?.organizationId ?? organizationId;
+}
+
+/**
+ * Get/create subscription info untuk org.
+ * Otomatis resolve ke primary workspace milik billing owner.
+ * Workspace ke-2/ke-3 dst akan share subscription dengan workspace pertama.
  */
 export async function getSubscriptionInfo(organizationId: string): Promise<SubscriptionInfo> {
-  let sub = await prisma.subscription.findUnique({ where: { organizationId } });
+  const billingOrgId = await resolveBillingOrgId(organizationId);
+  let sub = await prisma.subscription.findUnique({ where: { organizationId: billingOrgId } });
 
   if (!sub) {
     const now = new Date();
     const trialEnd = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
     sub = await prisma.subscription.create({
       data: {
-        organizationId,
+        organizationId: billingOrgId,
         plan: 'trial',
         status: 'trial_active',
         trialEndsAt: trialEnd,
@@ -66,13 +94,10 @@ export async function getSubscriptionInfo(organizationId: string): Promise<Subsc
     sub.status = 'expired';
   }
 
-  // Active jika status active & period belum habis
   const isActive =
     sub.status === 'active' &&
     !!sub.currentPeriodEnd &&
     sub.currentPeriodEnd.getTime() > now.getTime();
-  // Locked = tidak boleh akses fitur. True kalau expired & belum bayar/aktif.
-  // Pending_payment masih boleh akses (biar bisa kembali ke instruksi pembayaran).
   const isLocked =
     !isActive &&
     !isTrialing &&
@@ -88,5 +113,14 @@ export async function getSubscriptionInfo(organizationId: string): Promise<Subsc
     isTrialing,
     isActive,
     isLocked,
+    billingOrgId,
   };
+}
+
+/**
+ * Hitung berapa workspace user sudah punya (sebagai owner) — dipakai untuk
+ * enforce quota workspace sesuai paket.
+ */
+export async function countOwnedWorkspaces(userId: string): Promise<number> {
+  return prisma.member.count({ where: { userId, role: 'owner' } });
 }

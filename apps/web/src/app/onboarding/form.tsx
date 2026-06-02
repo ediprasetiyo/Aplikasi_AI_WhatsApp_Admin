@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { authClient } from '@/lib/auth-client';
-import { ensureSubscription } from './actions';
+import { ensureSubscription, canCreateWorkspace } from './actions';
 
 const INDUSTRIES = [
   'Klinik',
@@ -36,6 +36,15 @@ export function OnboardingForm() {
     if (!name.trim()) return;
 
     setLoading(true);
+    // Validasi jatah workspace dulu (server-side, anti-bypass)
+    const guard = await canCreateWorkspace();
+    if (!guard.ok) {
+      setLoading(false);
+      toast.error(guard.reason ?? 'Jatah workspace habis');
+      router.push('/dashboard/billing');
+      return;
+    }
+
     const { data, error } = await authClient.organization.create({
       name: name.trim(),
       slug: `${slugify(name)}-${Math.random().toString(36).slice(2, 6)}`,

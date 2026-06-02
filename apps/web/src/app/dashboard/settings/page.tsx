@@ -1,6 +1,7 @@
 import { Settings as SettingsIcon, Building2, User, AlertTriangle } from 'lucide-react';
 import { requireSession, getActiveOrgId } from '@/lib/session';
 import { requireActiveSubscription } from '@/lib/subscription-guard';
+import { getSubscriptionInfo } from '@/lib/subscription';
 import { prisma } from '@wa-admin/db';
 import { WorkspaceNameForm, DeleteWorkspaceButton } from './forms';
 
@@ -20,11 +21,10 @@ export default async function SettingsPage() {
   const session = await requireSession();
   const activeOrgId = await getActiveOrgId();
 
-  const [org, member] = activeOrgId
+  const [org, member, sharedSub] = activeOrgId
     ? await Promise.all([
         prisma.organization.findUnique({
           where: { id: activeOrgId },
-          include: { subscription: true },
         }),
         prisma.member.findUnique({
           where: {
@@ -34,8 +34,10 @@ export default async function SettingsPage() {
             },
           },
         }),
+        // Subscription dari primary workspace (paket berlaku untuk semua workspace milik owner)
+        getSubscriptionInfo(activeOrgId),
       ])
-    : [null, null];
+    : [null, null, null];
 
   const industry = parseIndustry(org?.metadata ?? null);
   const role = member?.role ?? 'member';
@@ -85,10 +87,13 @@ export default async function SettingsPage() {
             label="Paket"
             value={
               <span className="capitalize">
-                {org?.subscription?.plan ?? 'trial'}{' '}
+                {sharedSub?.plan ?? 'trial'}{' '}
                 <span className="ml-1 text-xs text-gray-500">
-                  ({org?.subscription?.status.replace('_', ' ') ?? 'trial active'})
+                  ({(sharedSub?.status ?? 'trial_active').replace('_', ' ')})
                 </span>
+                {sharedSub && sharedSub.billingOrgId !== activeOrgId && (
+                  <span className="ml-1 text-xs text-blue-600">· ikut workspace utama</span>
+                )}
               </span>
             }
           />

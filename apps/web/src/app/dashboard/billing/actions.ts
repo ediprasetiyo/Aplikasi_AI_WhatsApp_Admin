@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { prisma } from '@wa-admin/db';
 import { requireSession, requireActiveOrgId } from '@/lib/session';
 import { PLANS, type PlanKey } from '@/lib/plans';
+import { resolveBillingOrgId, countOwnedWorkspaces } from '@/lib/subscription';
 
 export type ActionResult<T = undefined> =
   | { ok: true; data?: T }
@@ -42,7 +43,9 @@ export async function submitSubscription(input: {
 }): Promise<ActionResult> {
   try {
     const session = await requireSession();
-    const orgId = await requireActiveOrgId();
+    const activeOrgId = await requireActiveOrgId();
+    // Subscription disimpan di primary workspace (billing org)
+    const orgId = await resolveBillingOrgId(activeOrgId);
     const parsed = checkoutSchema.safeParse(input);
     if (!parsed.success) {
       return { ok: false, error: parsed.error.issues[0]?.message ?? 'Input tidak valid' };
@@ -71,14 +74,12 @@ export async function submitSubscription(input: {
       const currentRank = PLAN_RANK[current.plan] ?? 0;
       const targetRank = PLAN_RANK[plan] ?? 0;
       if (targetRank < currentRank) {
-        // Downgrade — cek apakah user punya terlalu banyak workspace
-        const memberCount = await prisma.member.count({
-          where: { userId: session.user.id },
-        });
-        if (memberCount > planConfig.maxWorkspaces) {
+        // Downgrade — cek workspace yang user OWNER-i (bukan member doang)
+        const ownedCount = await countOwnedWorkspaces(session.user.id);
+        if (ownedCount > planConfig.maxWorkspaces) {
           return {
             ok: false,
-            error: `Anda punya ${memberCount} workspace. Paket ${planConfig.name} hanya boleh ${planConfig.maxWorkspaces}. Hapus workspace berlebih dulu sebelum downgrade.`,
+            error: `Anda punya ${ownedCount} workspace. Paket ${planConfig.name} hanya boleh ${planConfig.maxWorkspaces}. Hapus workspace berlebih dulu sebelum downgrade.`,
           };
         }
       }
@@ -127,7 +128,8 @@ export async function submitSubscription(input: {
 export async function cancelPendingSubscription(): Promise<ActionResult> {
   try {
     await requireSession();
-    const orgId = await requireActiveOrgId();
+    const activeOrgId = await requireActiveOrgId();
+    const orgId = await resolveBillingOrgId(activeOrgId);
     const sub = await prisma.subscription.findUnique({ where: { organizationId: orgId } });
     if (!sub) return { ok: false, error: 'Tidak ada subscription' };
     if (sub.status !== 'pending_payment') {
@@ -165,7 +167,8 @@ export async function pollSubscriptionStatus(): Promise<
 > {
   try {
     await requireSession();
-    const orgId = await requireActiveOrgId();
+    const activeOrgId = await requireActiveOrgId();
+    const orgId = await resolveBillingOrgId(activeOrgId);
     const sub = await prisma.subscription.findUnique({ where: { organizationId: orgId } });
     if (!sub) return { ok: false, error: 'No subscription' };
     return {

@@ -29,7 +29,7 @@ export default async function CheckoutPage({
   const orgId = await requireActiveOrgId();
   const sub = await getSubscriptionInfo(orgId);
   const fullSub = await prisma.subscription.findUnique({
-    where: { organizationId: orgId },
+    where: { organizationId: sub.billingOrgId },
   });
 
   // Detect intent dari current sub kalau tidak ada di query
