@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Shield, Building2, CreditCard, LayoutDashboard, CheckSquare } from 'lucide-react';
+import { Shield, Building2, CreditCard, LayoutDashboard, CheckSquare, ScrollText, FileSearch } from 'lucide-react';
 import { prisma } from '@wa-admin/db';
 import { requireSuperAdmin } from '@/lib/session';
 import { AdminSignOut } from './_components/admin-signout';
@@ -33,6 +33,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </AdminLink>
           <AdminLink href="/admin/subscriptions" icon={CreditCard}>
             Semua Subscriptions
+          </AdminLink>
+          <AdminLink href="/admin/logs" icon={ScrollText}>
+            Log Pesan
+          </AdminLink>
+          <AdminLink href="/admin/audit" icon={FileSearch}>
+            Audit Activity
           </AdminLink>
         </nav>
 

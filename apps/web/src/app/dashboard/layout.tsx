@@ -41,16 +41,27 @@ export default async function DashboardLayout({ children }: { children: React.Re
   // Server-side guard sudah ada di tiap page via requireActiveSubscription()
   const sub = await getSubscriptionInfo(activeOrgId);
 
-  // Hitung conversation yang last message-nya inbound (= belum dijawab)
-  const conversations = await prisma.conversation.findMany({
-    where: { organizationId: activeOrgId },
+  // Badge "Inbox" — hitung percakapan UNREAD:
+  //   ada pesan inbound yang lebih baru dari markedReadAt (atau belum pernah di-mark).
+  //   Customer banned tidak dihitung.
+  const convosForBadge = await prisma.conversation.findMany({
+    where: { organizationId: activeOrgId, customerStatus: { not: 'banned' } },
     select: {
-      messages: { orderBy: { createdAt: 'desc' }, take: 1, select: { direction: true } },
+      markedReadAt: true,
+      messages: {
+        where: { direction: 'inbound' },
+        orderBy: { createdAt: 'desc' },
+        take: 1,
+        select: { createdAt: true },
+      },
     },
   });
-  const pendingCount = conversations.filter(
-    (c) => c.messages[0]?.direction === 'inbound',
-  ).length;
+  const pendingCount = convosForBadge.filter((c) => {
+    const lastInbound = c.messages[0];
+    if (!lastInbound) return false;
+    if (!c.markedReadAt) return true; // belum pernah dibaca
+    return lastInbound.createdAt.getTime() > c.markedReadAt.getTime();
+  }).length;
 
   return (
     <div className="flex min-h-screen">
