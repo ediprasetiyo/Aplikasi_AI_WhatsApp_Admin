@@ -1,5 +1,6 @@
 import { Zap, Shield } from 'lucide-react';
 import { requireActiveOrgId } from '@/lib/session';
+import { requireActiveSubscription } from '@/lib/subscription-guard';
 import { prisma } from '@wa-admin/db';
 import { BaileysConnect } from './baileys-connect';
 import { ConnectForm } from './connect-form';
@@ -11,6 +12,7 @@ export default async function WhatsappPage({
 }: {
   searchParams: Promise<{ mode?: string }>;
 }) {
+  await requireActiveSubscription();
   const orgId = await requireActiveOrgId();
 
   const { mode = 'qr' } = await searchParams;

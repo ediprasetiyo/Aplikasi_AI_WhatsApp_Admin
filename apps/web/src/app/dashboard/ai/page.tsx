@@ -1,5 +1,6 @@
 import { Sparkles, BookOpen, Zap, CheckCircle2, AlertCircle } from 'lucide-react';
 import { requireActiveOrgId } from '@/lib/session';
+import { requireActiveSubscription } from '@/lib/subscription-guard';
 import { prisma } from '@wa-admin/db';
 import { SettingForm } from './setting-form';
 import { KbForm, KbList } from './kb-ui';
@@ -9,6 +10,7 @@ const DEFAULT_PROMPT =
   'Anda adalah admin customer service yang ramah dan informatif. Jawab pertanyaan customer dengan singkat, sopan, dan akurat berdasarkan informasi yang tersedia. Kalau tidak tahu jawaban, bilang akan dihubungkan ke admin manusia.';
 
 export default async function AiPage() {
+  await requireActiveSubscription();
   const orgId = await requireActiveOrgId();
 
   const [setting, entries] = await Promise.all([

@@ -21,8 +21,13 @@ const PLAN_RANK: Record<string, number> = {
   business: 3,
 };
 
-export default async function BillingPage() {
+export default async function BillingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ reason?: string }>;
+}) {
   const orgId = await requireActiveOrgId();
+  const { reason } = await searchParams;
   const sub = await getSubscriptionInfo(orgId);
   const fullSub = await prisma.subscription.findUnique({
     where: { organizationId: orgId },
@@ -30,9 +35,39 @@ export default async function BillingPage() {
 
   const isActive = sub.status === 'active';
   const isPending = sub.status === 'pending_payment';
+  const fromExpired = reason === 'expired';
 
   return (
     <div className="mx-auto max-w-6xl p-6 md:p-8">
+      {fromExpired && (
+        <div className="mb-6 rounded-lg border-2 border-red-300 bg-red-50 p-4">
+          <div className="flex items-start gap-3">
+            <svg
+              className="h-5 w-5 flex-shrink-0 text-red-700 mt-0.5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <div>
+              <h2 className="font-semibold text-red-900">
+                Paket Anda Sudah Berakhir
+              </h2>
+              <p className="mt-1 text-sm text-red-800">
+                Semua menu dikunci sampai Anda berlangganan. Pilih paket di bawah untuk
+                lanjut menggunakan Auto Balas.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="text-center">
         <h1 className="text-3xl md:text-4xl font-bold">Berlangganan</h1>
         <p className="mt-2 text-gray-600">

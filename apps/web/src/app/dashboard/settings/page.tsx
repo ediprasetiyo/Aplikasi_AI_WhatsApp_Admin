@@ -1,5 +1,6 @@
 import { Settings as SettingsIcon, Building2, User, AlertTriangle } from 'lucide-react';
 import { requireSession, getActiveOrgId } from '@/lib/session';
+import { requireActiveSubscription } from '@/lib/subscription-guard';
 import { prisma } from '@wa-admin/db';
 import { WorkspaceNameForm, DeleteWorkspaceButton } from './forms';
 
@@ -15,6 +16,7 @@ function parseIndustry(metadata: string | null): string | null {
 }
 
 export default async function SettingsPage() {
+  await requireActiveSubscription();
   const session = await requireSession();
   const activeOrgId = await getActiveOrgId();
 

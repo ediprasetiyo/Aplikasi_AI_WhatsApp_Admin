@@ -12,6 +12,7 @@ import {
 import { requireSession, getActiveOrgId } from '@/lib/session';
 import { prisma } from '@wa-admin/db';
 import { getSubscriptionInfo } from '@/lib/subscription';
+import { requireActiveSubscription } from '@/lib/subscription-guard';
 import { Calendar, Sparkles } from 'lucide-react';
 
 // Threshold safety untuk Baileys (QR scan, unofficial). Cloud API official tidak punya limit harian.
@@ -20,6 +21,7 @@ const SAFE_DAILY = 100;
 const CAUTION_DAILY = 300;
 
 export default async function DashboardHome() {
+  await requireActiveSubscription();
   const session = await requireSession();
   const activeOrgId = await getActiveOrgId();
 
@@ -429,7 +431,52 @@ function UsageBadge({
   );
 }
 
-function SubscriptionBadge({ sub }: { sub: { plan: string; status: string; daysRemaining: number | null; isTrialing: boolean; isExpired: boolean } }) {
+function SubscriptionBadge({
+  sub,
+}: {
+  sub: {
+    plan: string;
+    status: string;
+    daysRemaining: number | null;
+    isTrialing: boolean;
+    isExpired: boolean;
+    currentPeriodEnd?: Date | null;
+  };
+}) {
+  // Status ACTIVE — tampilkan paket + tanggal expired + sisa hari
+  if (sub.status === 'active') {
+    const daysLeft = sub.currentPeriodEnd
+      ? Math.max(
+          0,
+          Math.ceil(
+            (sub.currentPeriodEnd.getTime() - Date.now()) / (24 * 60 * 60 * 1000),
+          ),
+        )
+      : 0;
+    return (
+      <div className="rounded-lg border-2 border-green-400 bg-green-50 px-5 py-3 min-w-[220px]">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-green-700" />
+          <span className="text-xs font-medium uppercase tracking-wide text-green-700">
+            Paket Aktif
+          </span>
+        </div>
+        <div className="mt-1 text-xl font-bold capitalize text-green-900">{sub.plan}</div>
+        <div className="mt-0.5 text-xs text-green-800">
+          Aktif sampai{' '}
+          {sub.currentPeriodEnd
+            ? sub.currentPeriodEnd.toLocaleDateString('id', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+              })
+            : '—'}
+          {' · '}
+          <strong className={daysLeft < 7 ? 'text-red-700' : ''}>{daysLeft} hari lagi</strong>
+        </div>
+      </div>
+    );
+  }
   if (sub.isTrialing) {
     return (
       <div className="rounded-lg border border-brand bg-brand/5 px-4 py-2.5">
@@ -452,16 +499,6 @@ function SubscriptionBadge({ sub }: { sub: { plan: string; status: string; daysR
           Berakhir
         </div>
         <div className="mt-0.5 text-sm font-bold text-red-900">Perlu berlangganan</div>
-      </div>
-    );
-  }
-  if (sub.status === 'active') {
-    return (
-      <div className="rounded-lg border border-green-300 bg-green-50 px-4 py-2.5">
-        <div className="text-xs font-medium uppercase tracking-wide text-green-700">
-          Paket Aktif
-        </div>
-        <div className="mt-0.5 text-sm font-bold capitalize text-green-900">{sub.plan}</div>
       </div>
     );
   }

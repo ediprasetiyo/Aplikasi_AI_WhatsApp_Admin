@@ -1,8 +1,10 @@
 import { requireActiveOrgId } from '@/lib/session';
+import { requireActiveSubscription } from '@/lib/subscription-guard';
 import { prisma } from '@wa-admin/db';
 import { InviteForm } from './invite-form';
 
 export default async function TeamPage() {
+  await requireActiveSubscription();
   const activeOrgId = await requireActiveOrgId();
 
   const [members, invitations] = await Promise.all([
