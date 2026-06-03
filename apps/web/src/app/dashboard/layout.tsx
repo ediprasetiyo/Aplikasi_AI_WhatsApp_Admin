@@ -18,6 +18,7 @@ import { getSubscriptionInfo } from '@/lib/subscription';
 import { SignOutButton } from './_components/sign-out-button';
 import { OrgSwitcher } from './_components/org-switcher';
 import { AutoRefresh } from './inbox/auto-refresh';
+import { NewMessageNotifier } from './inbox/new-message-notifier';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await requireSession();
@@ -43,32 +44,47 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const sub = await getSubscriptionInfo(activeOrgId);
 
   // Badge "Inbox" — hitung percakapan UNREAD:
-  //   ada pesan inbound yang lebih baru dari markedReadAt (atau belum pernah di-mark).
+  //   Pesan TERAKHIR di thread adalah inbound (= customer baru kirim, belum kita balas)
+  //   AND lebih baru dari markedReadAt (user belum buka chat tsb).
   //   Customer banned tidak dihitung.
+  //
+  //   Kalau pesan terakhir sudah outbound (sudah dibalas admin/AI) → sudah handled,
+  //   tidak masuk badge — walau markedReadAt masih null.
   const convosForBadge = await prisma.conversation.findMany({
     where: { organizationId: activeOrgId, customerStatus: { not: 'banned' } },
     select: {
       markedReadAt: true,
       messages: {
-        where: { direction: 'inbound' },
         orderBy: { createdAt: 'desc' },
         take: 1,
-        select: { createdAt: true },
+        select: { direction: true, createdAt: true },
       },
     },
   });
   const pendingCount = convosForBadge.filter((c) => {
-    const lastInbound = c.messages[0];
-    if (!lastInbound) return false;
-    if (!c.markedReadAt) return true; // belum pernah dibaca
-    return lastInbound.createdAt.getTime() > c.markedReadAt.getTime();
+    const lastMsg = c.messages[0];
+    if (!lastMsg) return false;
+    // Hanya hitung kalau pesan terakhir = inbound (= belum kita balas)
+    if (lastMsg.direction !== 'inbound') return false;
+    // Sudah dibuka user setelah pesan ini → tidak unread
+    if (c.markedReadAt && c.markedReadAt.getTime() >= lastMsg.createdAt.getTime()) return false;
+    return true;
   }).length;
+
+  // Setting notif suara dari AiSetting org
+  const aiSetting = await prisma.aiSetting.findUnique({
+    where: { organizationId: activeOrgId },
+    select: { notifSound: true },
+  });
+  const notifSoundEnabled = aiSetting?.notifSound ?? true;
 
   return (
     <div className="flex min-h-screen">
       {/* Auto-refresh tiap 15 detik biar badge sidebar update saat ada chat baru.
           Cuma jalan kalau tab visible (lihat AutoRefresh) — hemat resource. */}
       <AutoRefresh intervalMs={15000} />
+      {/* Notif suara + toast saat unread bertambah */}
+      <NewMessageNotifier unreadCount={pendingCount} soundEnabled={notifSoundEnabled} />
       <aside className="sticky top-0 flex h-screen w-64 flex-col border-r bg-white px-4 py-6">
         <Link href="/dashboard" className="flex items-center gap-2 font-bold text-lg">
           <MessageCircleReply className="h-6 w-6 text-brand" />
