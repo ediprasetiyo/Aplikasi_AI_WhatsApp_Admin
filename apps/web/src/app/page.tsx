@@ -67,7 +67,7 @@ export default function LandingPage() {
             href="/demo"
             className="inline-flex items-center justify-center gap-2 rounded-md bg-brand px-6 py-3 font-medium text-white hover:bg-brand-dark"
           >
-            Coba Demo Live <ArrowRight className="h-4 w-4" />
+            Lihat AI Balas Chat Sekarang <ArrowRight className="h-4 w-4" />
           </Link>
           <Link
             href="/register"
@@ -164,10 +164,38 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ===== Testimonial strip ===== */}
+      <section className="container py-12">
+        <div className="rounded-2xl border bg-gradient-to-br from-green-50 to-emerald-50 p-8 md:p-10">
+          <div className="flex items-center gap-1 text-yellow-500">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Star key={i} className="h-5 w-5 fill-current" />
+            ))}
+          </div>
+          <blockquote className="mt-4 text-lg md:text-xl font-medium text-gray-900 italic">
+            “Sebelum pakai Auto Balas, chat customer malam-malam sering lewat sampai pagi.
+            Sekarang AI balas semua dalam hitungan detik — order naik signifikan dalam 2 minggu.
+            Worth banget buat resto yang rame.”
+          </blockquote>
+          <div className="mt-5 flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand text-white font-bold">
+              RW
+            </div>
+            <div>
+              <div className="font-semibold">Owner Resto Wayang</div>
+              <div className="text-xs text-gray-500">Cabang Bintaro · Pelanggan sejak 2026</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ===== Pricing ===== */}
       <section id="harga" className="container py-16">
         <div className="text-center">
-          <h2 className="text-3xl md:text-4xl font-bold">Harga sederhana, hasil cepat</h2>
+          <div className="inline-flex items-center gap-2 rounded-full border-2 border-yellow-300 bg-yellow-50 px-4 py-1.5 text-sm font-medium text-yellow-900">
+            🔥 Promo Early User — diskon 33% bulan pertama (Rp 199rb dari Rp 299rb)
+          </div>
+          <h2 className="mt-4 text-3xl md:text-4xl font-bold">Harga sederhana, hasil cepat</h2>
           <p className="mt-2 text-gray-600">
             ROI biasanya 1-2 minggu — 1 customer yang tidak hilang sudah balik modal.
           </p>
@@ -214,6 +242,8 @@ export default function LandingPage() {
               'Custom integration',
             ]}
             cta="Hubungi Kami"
+            ctaHref={`https://wa.me/${WA_NUMBER}?text=Halo%20Pak%20Edi%2C%20saya%20tertarik%20paket%20Business%20Auto%20Balas%20untuk%20bisnis%20saya.%20Boleh%20diskusi%3F`}
+            ctaExternal
           />
         </div>
         <p className="mt-6 text-center text-xs text-gray-500">
@@ -390,7 +420,11 @@ const FAQ = [
   },
   {
     q: 'Bagaimana cara bayar?',
-    a: 'Transfer bank, e-wallet (OVO/Dana/GoPay), atau virtual account via Midtrans. Bisa bayar bulanan, no kontrak panjang.',
+    a: 'Transfer Bank BCA atau DANA. Konfirmasi pembayaran lewat WhatsApp ke +62 821-1552-5327, akun langsung aktif maksimal 1x24 jam. Tidak ada kontrak panjang — bisa berhenti kapan saja.',
+  },
+  {
+    q: 'Ada garansi uang kembali?',
+    a: 'Ya. Garansi 7 hari uang kembali — kalau dalam 7 hari pertama berlangganan ternyata tidak cocok, kami refund 100%. Tidak ribet, cukup konfirmasi via WhatsApp.',
   },
 ];
 
@@ -427,6 +461,8 @@ function PriceCard({
   for: forWho,
   features,
   cta,
+  ctaHref,
+  ctaExternal,
   highlight,
 }: {
   name: string;
@@ -434,8 +470,16 @@ function PriceCard({
   for: string;
   features: string[];
   cta: string;
+  ctaHref?: string;
+  ctaExternal?: boolean;
   highlight?: boolean;
 }) {
+  const href = ctaHref ?? '/register';
+  const btnClass = `mt-8 block rounded-md py-2.5 text-center font-medium ${
+    highlight
+      ? 'bg-brand text-white hover:bg-brand-dark'
+      : 'border border-gray-300 hover:bg-gray-50'
+  }`;
   return (
     <div
       className={`rounded-2xl border p-8 ${
@@ -461,16 +505,19 @@ function PriceCard({
           </li>
         ))}
       </ul>
-      <Link
-        href="/register"
-        className={`mt-8 block rounded-md py-2.5 text-center font-medium ${
-          highlight
-            ? 'bg-brand text-white hover:bg-brand-dark'
-            : 'border border-gray-300 hover:bg-gray-50'
-        }`}
-      >
-        {cta}
-      </Link>
+      {/* Bonus highlight di semua paket — perceived value */}
+      <div className="mt-5 rounded-md border border-yellow-200 bg-yellow-50 p-3 text-xs text-yellow-900">
+        🎁 <strong>Bonus minggu ini:</strong> setup gratis + garansi uang kembali 7 hari
+      </div>
+      {ctaExternal ? (
+        <a href={href} target="_blank" rel="noreferrer" className={btnClass}>
+          {cta}
+        </a>
+      ) : (
+        <Link href={href} className={btnClass}>
+          {cta}
+        </Link>
+      )}
     </div>
   );
 }
