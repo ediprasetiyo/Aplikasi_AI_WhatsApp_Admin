@@ -26,6 +26,21 @@ export default async function ConversationPage({
   });
   if (!convo) notFound();
 
+  // Mark as read otomatis saat user buka chat — supaya badge unread di sidebar berkurang.
+  // Hanya update kalau ada pesan inbound yang lebih baru dari markedReadAt sebelumnya.
+  const lastInbound = [...convo.messages]
+    .reverse()
+    .find((m) => m.direction === 'inbound');
+  const needsMarkRead =
+    lastInbound &&
+    (!convo.markedReadAt || lastInbound.createdAt > convo.markedReadAt);
+  if (needsMarkRead) {
+    await prisma.conversation.update({
+      where: { id: convo.id },
+      data: { markedReadAt: new Date() },
+    });
+  }
+
   const isSimulator = convo.whatsappAccount.status !== 'active';
 
   return (

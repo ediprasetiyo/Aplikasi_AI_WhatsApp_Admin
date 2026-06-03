@@ -17,6 +17,7 @@ import { prisma } from '@wa-admin/db';
 import { getSubscriptionInfo } from '@/lib/subscription';
 import { SignOutButton } from './_components/sign-out-button';
 import { OrgSwitcher } from './_components/org-switcher';
+import { AutoRefresh } from './inbox/auto-refresh';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await requireSession();
@@ -65,6 +66,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <div className="flex min-h-screen">
+      {/* Auto-refresh tiap 15 detik biar badge sidebar update saat ada chat baru.
+          Cuma jalan kalau tab visible (lihat AutoRefresh) — hemat resource. */}
+      <AutoRefresh intervalMs={15000} />
       <aside className="sticky top-0 flex h-screen w-64 flex-col border-r bg-white px-4 py-6">
         <Link href="/dashboard" className="flex items-center gap-2 font-bold text-lg">
           <MessageCircleReply className="h-6 w-6 text-brand" />
